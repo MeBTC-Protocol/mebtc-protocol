@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {Script} from "forge-std/Script.sol";
+import {console2} from "forge-std/console2.sol";
+
+import {MockUSDC} from "../src/mocks/MockUSDC.sol";
+import {MiningManager} from "../src/core/MiningManager.sol";
+import {MeBTC} from "../src/token/MeBTC.sol";
+import {MinerNFT} from "../src/nft/MinerNFT.sol";
+import {BonusNFT} from "../src/nft/BonusNFT.sol";
+
+contract DeployLocal is Script {
+    function run() external {
+        uint256 pk      = vm.envUint("PRIVATE_KEY");
+        address POOL    = vm.envAddress("POOL_ADDRESS");
+        address PROJECT = vm.envAddress("PROJECT_WALLET");
+        address SALES   = vm.envAddress("SALES_WALLET");
+        address SIGNER  = vm.envAddress("SIGNER_ADDRESS");
+
+        address DEPLOYER = vm.addr(pk);
+
+        vm.startBroadcast(pk);
+
+        // 1) USDC-Mock deployen (6 Decimals)
+        MockUSDC usdc = new MockUSDC();
+
+        // 2) Kern-Contracts
+        MiningManager manager = new MiningManager(address(usdc), POOL);
+
+        // FIX: BonusNFT braucht (manager, owner) -> Owner = Deployer/Admin Wallet
+        BonusNFT bonus = new BonusNFT(address(manager), DEPLOYER);
+
+        MinerNFT miner = new MinerNFT(address(manager), PROJECT, SALES, SIGNER);
+        MeBTC mebtc = new MeBTC(address(manager));
+
+        // 3) Verkabeln
+        manager.init(address(mebtc), address(miner), address(bonus));
+
+        // 4) Test-Liquidität: 1,000 USDC an Deployer (für Gebühren)
+        usdc.mint(DEPLOYER, 1_000_000000); // 1000 * 10^6
+
+        vm.stopBroadcast();
+
+        // Console-Ausgaben
+        console2.log("USDC:     ", address(usdc));
+        console2.log("Manager:  ", address(manager));
+        console2.log("BonusNFT: ", address(bonus));
+        console2.log("MinerNFT: ", address(miner));
+        console2.log("MeBTC:    ", address(mebtc));
+    }
+}

@@ -1,0 +1,60 @@
+import { ref, watchEffect } from 'vue'
+import { Contract, formatUnits } from 'ethers'
+import { ADDRESSES, TOKENS } from '../contracts/addresses'
+import { useWallet } from './useWallet'
+
+const ERC20_ABI = [
+  'function allowance(address owner, address spender) view returns (uint256)'
+]
+
+export function useAllowances() {
+  const { address, readProvider } = useWallet()
+
+  const loading = ref(false)
+  const allowanceMiner = ref<bigint>(0n)
+  const allowanceManager = ref<bigint>(0n)
+
+  watchEffect(async () => {
+    const a = address.value
+    if (!a) {
+      allowanceMiner.value = 0n
+      allowanceManager.value = 0n
+      return
+    }
+
+    loading.value = true
+    try {
+      const p = readProvider.value
+      const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p)
+
+      allowanceMiner.value = (await usdc.allowance(a, ADDRESSES.minerNft)) as bigint
+      allowanceManager.value = (await usdc.allowance(a, ADDRESSES.miningManager)) as bigint
+    } finally {
+      loading.value = false
+    }
+  })
+
+  function fmt(v: bigint) {
+    const isMax = v > (2n ** 255n)
+    return isMax ? 'max' : formatUnits(v, TOKENS.usdc.decimals)
+  }
+
+  function allowanceMinerText() {
+    return fmt(allowanceMiner.value)
+  }
+
+  function allowanceManagerText() {
+    return fmt(allowanceManager.value)
+  }
+
+  return {
+    loading,
+    allowanceMiner,
+    allowanceManager,
+    allowanceMinerText,
+    allowanceManagerText
+  }
+}
+
+
+

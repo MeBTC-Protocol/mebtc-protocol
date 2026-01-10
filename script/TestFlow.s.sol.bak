@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {Script} from "forge-std/Script.sol";
+import {console2} from "forge-std/console2.sol";
+
+import {MockUSDC} from "../src/mocks/MockUSDC.sol";
+import {MiningManager} from "../src/core/MiningManager.sol";
+import {MeBTC} from "../src/token/MeBTC.sol";
+import {MinerNFT} from "../src/nft/MinerNFT.sol";
+import {BonusNFT} from "../src/nft/BonusNFT.sol";
+
+contract TestFlow is Script {
+    // wie im MinerNFT
+    bytes32 constant MINT_TYPEHASH =
+        keccak256("MintAuth(address to,uint256 hashRate,uint256 powerMilliKWh,uint256 nonce,uint256 deadline)");
+    bytes32 constant EIP712_DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
+    function _signMint(
+        uint256 signerPk,
+        MinerNFT miner,
+        address to,
+        uint256 hashRate,
+        uint256 powerMilliKWh,
+        uint256 nonce,
+        uint256 deadline
+    ) internal view returns (bytes memory sig) {
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH,
+                keccak256(bytes("MeBTCMiner")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(miner)
+            )
+        );
+
+        bytes32 structHash = keccak256(abi.encode(MINT_TYPEHASH, to, hashRate, powerMilliKWh, nonce, deadline));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        sig = abi.encodePacked(r, s, v);
+    }
+
+    function run() external {
+        // ENV laden
+        uint256 pk      = uint256(vm.envBytes32("PRIVATE_KEY")); // 0x-hex ok
+        address USER    = vm.addr(pk);
+        address POOL    = vm.envAddress("POOL_ADDRESS");
+        address PROJECT = vm.envAddress("PROJECT_WALLET");
+        address SALES   = vm.envAddress("SALES_WALLET");
+        address SIGNER  = vm.envAddress("SIGNER_ADDRESS"); // lokal: = USER
+
+        vm.startBroadcast(pk);
+
+        // 1) deploy stack (lokal/anvil test)
+        MockUSDC usdc = new MockUSDC();
+        MiningManager manager = new MiningManager(address(usdc), POOL);
+
+        // BonusNFT braucht (manager, owner) -> Owner = USER
+        BonusNFT bonus = new BonusNFT(address(manager), USER);
+
+        MinerNFT miner = new MinerNFT(address(manager), PROJECT, SALES, SIGNER);
+        MeBTC mebtc = new MeBTC(address(manager));
+        manager.init(address(mebtc), address(miner), address(bonus));
+
+        // 2) startguthaben (2_000 USDC mit 6 Dez.)
+        usdc.mint(USER, 2_000_000000);
+
+        console2.log("USDC:     ", address(usdc));
+        console2.log("Manager:  ", address(manager));
+        console2.log("BonusNFT: ", address(bonus));
+        console2.log("MinerNFT: ", address(miner));
+        console2.log("MeBTC:    ", address(mebtc));
+
+        // 3) eip-712 mint
+        uint256 hashRate      = 10_000;
+        uint256 powerMilliKWh = 200_000; // 0.2 kWh/h in milli-kWh
+        uint256 deadline      = block.timestamp + 1 days;
+
+        uint256 nonceBefore = miner.nonces(USER);
+        bytes memory sig = _signMint(pk, miner, USER, hashRate, powerMilliKWh, nonceBefore, deadline);
+
+        miner.mintWithSig(
+            MinerNFT.MintAuth({
+                to: USER,
+                hashRate: hashRate,
+                powerMilliKWh: powerMilliKWh,
+                nonce: nonceBefore,
+                deadline: deadline
+            }),
+            sig
+        );
+
+        uint256 tokenId = miner.nextTokenId() - 1;
+        console2.log("Minted Miner tokenId:", tokenId);
+
+        // 4) bonus geben (solar + asic)
+        bonus.mint(USER, bonus.SOLAR_PANEL(), 1);
+        bonus.mint(USER, bonus.ASIC_BOOSTER(), 1);
+
+        // 5) zeit vorspulen: 12 * 10min
+        uint256 intervals = 12;
+        vm.warp(block.timestamp + intervals * manager.CLAIM_INTERVAL());
+
+        // 6) preview
+        (uint256 reward, uint256 fee) = manager.preview(tokenId, USER);
+        console2.log("Preview -> Reward MBTC (wei):", reward);
+        console2.log("Preview -> Fee USDC (6d):   ", fee);
+
+        vm.stopBroadcast();
+
+        // 7) claim als USER (lokal ok; auf echten chain brauchst du echte USDC)
+        vm.startPrank(USER);
+
+        // approve groß oder exakt fee – hier bleibt dein max-approve
+        usdc.approve(address(manager), type(uint256).max);
+
+        // KORREKTUR: Array für die Token-ID erstellen
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = tokenId;
+
+        manager.claim(ids);
+
+        uint256 mbtcBal = mebtc.balanceOf(USER);
+        uint256 usdcBal = usdc.balanceOf(USER);
+
+        vm.stopPrank();
+
+        console2.log("After claim -> MBTC balance:", mbtcBal);
+        console2.log("After claim -> USDC balance:", usdcBal);
+    }
+}
+

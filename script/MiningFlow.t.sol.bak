@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
+
+import "forge-std/Test.sol";
+import "../src/core/MiningManager.sol";
+import "../src/nft/MinerNFT.sol";
+import "../src/nft/BonusNFT.sol";
+import "../src/token/MeBTC.sol";
+import "../src/mocks/MockUSDC.sol";
+
+contract MiningFlowTest is Test, IMinerHook, IBonusHook {
+    MiningManager manager;
+    MinerNFT miner;
+    BonusNFT bonus;
+    MeBTC mebtc;
+    MockUSDC usdc;
+
+    address deployer = address(this);
+    address user = address(0xBEEF);
+    address project = address(0x1111);
+    address sales = address(0x2222);
+    address signer;
+
+    // IMinerHook/IBonusHook dummy
+    function onMinerTransfer(address, address, uint256, uint256) external {}
+    function onBonusChanged(address) external {}
+
+    function setUp() public {
+        // signer als EOA
+        uint256 pk = 0xA11CE;
+        signer = vm.addr(pk);
+
+        usdc = new MockUSDC();
+        manager = new MiningManager(address(usdc), address(0xDEAD));
+
+        // FIX: BonusNFT braucht (manager, owner)
+        bonus = new BonusNFT(address(manager), deployer);
+
+        miner = new MinerNFT(address(manager), project, sales, signer);
+        mebtc = new MeBTC(address(manager));
+        manager.init(address(mebtc), address(miner), address(bonus));
+
+        // user funded mit USDC
+        usdc.mint(user, 1_000_000e6);
+        vm.prank(user);
+        usdc.approve(address(manager), type(uint256).max);
+    }
+
+    function _mintWithSig(address to, uint256 hr, uint256 pmkwh) internal returns (uint256 id) {
+        // baue EIP712 Sig, wie in deinem Script
+        MinerNFT.MintAuth memory p;
+        p.to = to; p.hashRate = hr; p.powerMilliKWh = pmkwh;
+        p.nonce = miner.nonces(to);
+        p.deadline = block.timestamp + 1 days;
+
+        bytes32 TYPEHASH = keccak256("MintAuth(address to,uint256 hashRate,uint256 powerMilliKWh,uint256 nonce,uint256 deadline)");
+        bytes32 DOMAIN = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("MeBTCMiner"),
+                keccak256("1"),
+                block.chainid,
+                address(miner)
+            )
+        );
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN,
+                keccak256(abi.encode(TYPEHASH, p.to, p.hashRate, p.powerMilliKWh, p.nonce, p.deadline))
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xA11CE, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        uint256 next = miner.nextTokenId();
+        vm.prank(to);
+        miner.mintWithSig(p, sig);
+        return next;
+    }
+
+    function test_FeesOnlyWhenActive_thenRewardsAccrue() public {
+        // 1) Mint Miner (hr>0, power>0)
+        uint256 id = _mintWithSig(user, 2000, 600);
+
+        // direkt nach Mint sollte aktiv sein (wegen Patch in MinerNFT)
+        assertGt(manager.ownerActiveHash(user), 0, "ownerActiveHash after mint");
+        assertGt(manager.totalEffectiveHash(), 0, "totalEffectiveHash after mint");
+
+        // 2) 1 Slot warten → sowohl Fees als auch Rewards steigen
+        vm.warp(block.timestamp + manager.CLAIM_INTERVAL());
+        (uint256 r1, uint256 f1) = manager.preview(id, user);
+        assertGt(f1, 0, "fee after 1 slot");
+        assertGt(r1, 0, "reward after 1 slot");
+
+        // 3) Miner „deaktivieren“ simulieren (alle Hashes raus)
+        // (nur zu Testzwecken: manipuliere intern)
+        vm.store(address(manager), keccak256(abi.encode(user, uint256(5))), bytes32(uint256(0))); // ownerActiveHash[user]=0
+        vm.store(address(manager), bytes32(uint256(10)), bytes32(uint256(0))); // totalEffectiveHash=0
+
+        // 4) 1 Slot warten → Fees dürfen NICHT steigen (unser Patch), Rewards sowieso 0
+        (uint256 rPrev, uint256 fPrev) = manager.preview(id, user);
+        vm.warp(block.timestamp + manager.CLAIM_INTERVAL());
+        (uint256 r2, uint256 f2) = manager.preview(id, user);
+        assertEq(f2, fPrev, "fees do not increase when inactive");
+        assertEq(r2, rPrev, "rewards do not increase when inactive");
+
+        // 5) Reaktivieren (Self-transfer o.ä.) → danach steigen beide wieder
+        // Im Test setzen wir ownerActiveHash und totalEffectiveHash zurück:
+        vm.store(address(manager), keccak256(abi.encode(user, uint256(5))), bytes32(uint256(2000)));
+        vm.store(address(manager), bytes32(uint256(10)), bytes32(uint256(2000)));
+        vm.warp(block.timestamp + manager.CLAIM_INTERVAL());
+        (uint256 r3, uint256 f3) = manager.preview(id, user);
+        assertGt(f3, f2, "fees resume when active");
+        assertGt(r3, r2, "rewards resume when active");
+    }
+}
