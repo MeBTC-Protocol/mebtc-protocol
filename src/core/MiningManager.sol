@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /*
     MiningManager (upgrades become active after claim)
@@ -33,7 +34,7 @@ interface IMinerNFT {
     function applyPendingUpgrades(uint256 tokenId) external;
 }
 
-contract MiningManager is ReentrancyGuard {
+contract MiningManager is ReentrancyGuard, Ownable {
     uint256 public constant CLAIM_INTERVAL = 600;       // 10 Minuten
     uint256 public constant HALVING_BLOCKS = 210_000;   // Slots bis Halving
     uint256 public constant INITIAL_REWARD = 50e18;     // MBTC pro Slot (Netzwerk)
@@ -41,7 +42,7 @@ contract MiningManager is ReentrancyGuard {
     uint256 public constant FEE_PER_KWH = 150_000;      // 0.15 USDC (6 dec)
     uint256 private constant KWH_DENOM = 3_600_000;     // 1000*3600
 
-    IERC20  public immutable usdc;
+    IERC20  public payToken;
     address public immutable pool;
 
     IMeBTC    public meBTC;
@@ -60,26 +61,35 @@ contract MiningManager is ReentrancyGuard {
     mapping(uint256 => uint256) public pendingReward;
     mapping(uint256 => uint256) public lastSettleTime;
     mapping(uint256 => uint256) public debtUSDC;
+    mapping(uint256 => uint256) public lastClaimedBlockIndex;
 
     event Updated(uint256 slots, uint256 minted, uint256 acc);
     event RewardsClaimed(address indexed user, uint256 reward, uint256 fee);
     event MinerMoved(address indexed from, address indexed to, uint256 indexed tokenId, uint256 effHashAdded);
     event MinerUpgraded(address indexed owner, uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
     event Initialized(address mebtc, address miner);
+    event PayTokenUpdated(address indexed oldToken, address indexed newToken);
 
     modifier onlyInit() {
         require(msg.sender == initializer, "!init");
         _;
     }
 
-    constructor(address _usdc, address _pool) {
-        require(_usdc != address(0) && _pool != address(0), "arg=0");
-        usdc = IERC20(_usdc);
+    constructor(address _payToken, address _pool) Ownable(msg.sender) {
+        require(_payToken != address(0) && _pool != address(0), "arg=0");
+        payToken = IERC20(_payToken);
         pool = _pool;
 
         initializer = msg.sender;
         lastUpdate = block.timestamp;
         currentReward = INITIAL_REWARD;
+    }
+
+    function setPayToken(address _payToken) external onlyOwner {
+        require(_payToken != address(0), "token=0");
+        address oldToken = address(payToken);
+        payToken = IERC20(_payToken);
+        emit PayTokenUpdated(oldToken, _payToken);
     }
 
     function init(address _mebtc, address _miner) external onlyInit {
@@ -106,8 +116,15 @@ contract MiningManager is ReentrancyGuard {
         }
 
         if (to != address(0)) {
+            if (from == address(0) && totalEffectiveHash == 0) {
+                // start emission clock when first miner becomes active
+                lastUpdate = block.timestamp;
+            }
             lastAccPerHash[tokenId] = accRewardPerEffHash;
             lastSettleTime[tokenId] = block.timestamp;
+            if (from == address(0)) {
+                lastClaimedBlockIndex[tokenId] = blockIndex;
+            }
             totalEffectiveHash += effHash;
         }
 
@@ -137,11 +154,16 @@ contract MiningManager is ReentrancyGuard {
         uint256 outF;
         uint40 nowTs = uint40(block.timestamp);
 
-        // 1) settle alle IDs (alte stats)
+        // 1) check eligibility for all IDs (must have a completed global slot)
         for (uint256 i; i < ids.length; i++) {
             uint256 id = ids[i];
             require(minerNFT.ownerOf(id) == msg.sender, "!owner");
+            require(blockIndex > lastClaimedBlockIndex[id], "slot");
+        }
 
+        // 2) settle alle IDs (alte stats)
+        for (uint256 i; i < ids.length; i++) {
+            uint256 id = ids[i];
             _settle(id);
 
             outR += pendingReward[id];
@@ -153,23 +175,24 @@ contract MiningManager is ReentrancyGuard {
             minerNFT.setLastClaimAt(id, nowTs);
             lastSettleTime[id] = nowTs;
             lastAccPerHash[id] = accRewardPerEffHash;
+            lastClaimedBlockIndex[id] = blockIndex;
         }
 
-        // 2) collect fee
+        // 3) collect fee
         if (outF > 0) {
-            require(usdc.allowance(msg.sender, address(this)) >= outF, "allowance");
-            require(usdc.balanceOf(msg.sender) >= outF, "balance");
-            require(usdc.transferFrom(msg.sender, pool, outF), "usdc");
+            require(payToken.allowance(msg.sender, address(this)) >= outF, "allowance");
+            require(payToken.balanceOf(msg.sender) >= outF, "balance");
+            require(payToken.transferFrom(msg.sender, pool, outF), "paytoken");
         }
 
-        // 3) mint reward
+        // 4) mint reward
         if (outR > 0) {
             uint256 remain = meBTC.MAX_SUPPLY() - meBTC.totalSupply();
             if (outR > remain) outR = remain;
             if (outR > 0) meBTC.mint(msg.sender, outR);
         }
 
-        // 4) jetzt erst upgrades aktivieren (wirkt ab jetzt)
+        // 5) jetzt erst upgrades aktivieren (wirkt ab jetzt)
         for (uint256 i; i < ids.length; i++) {
             uint256 id = ids[i];
             // applyPendingUpgrades kann manager hook onMinerUpgradeHashChange auslösen
@@ -226,6 +249,7 @@ contract MiningManager is ReentrancyGuard {
     }
 
     function _update() internal {
+        if (totalEffectiveHash == 0) return;
         uint256 ts = block.timestamp;
         if (ts < lastUpdate + CLAIM_INTERVAL) return;
 
@@ -263,6 +287,9 @@ contract MiningManager is ReentrancyGuard {
         view
         returns (uint256 areh, uint256 li, uint256 rw, uint256 last)
     {
+        if (totalEffectiveHash == 0) {
+            return (accRewardPerEffHash, blockIndex, currentReward, lastUpdate);
+        }
         uint256 ts = block.timestamp;
         if (ts < lastUpdate + CLAIM_INTERVAL) {
             return (accRewardPerEffHash, blockIndex, currentReward, lastUpdate);
@@ -294,6 +321,3 @@ contract MiningManager is ReentrancyGuard {
         return (_areh, _li, _rw, lastUpdate + intervals * CLAIM_INTERVAL);
     }
 }
-
-
-

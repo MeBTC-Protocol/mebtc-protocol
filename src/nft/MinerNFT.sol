@@ -42,7 +42,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
     uint16 public constant PRIMARY_PROJECT_BPS = 500; // 5%
 
     // --------- config ----------
-    IERC20 public immutable usdc;
+    IERC20 public payToken;
     address public immutable poolTreasury;
     address public immutable projectWallet;
 
@@ -102,19 +102,19 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
 
     // --------- constructor ----------
     constructor(
-        address _usdc,
+        address _payToken,
         address _poolTreasury,
         address _projectWallet,
         address _royaltyWallet,
         uint96 _royaltyBps
     ) ERC721("MeBTC Miner", "MBTCMINER") Ownable(msg.sender) {
-        require(_usdc != address(0), "usdc=0");
+        require(_payToken != address(0), "token=0");
         require(_poolTreasury != address(0), "pool=0");
         require(_projectWallet != address(0), "project=0");
         require(_royaltyWallet != address(0), "royalty=0");
         require(_royaltyBps <= 10_000, "royalty>100%");
 
-        usdc = IERC20(_usdc);
+        payToken = IERC20(_payToken);
         poolTreasury = _poolTreasury;
         projectWallet = _projectWallet;
 
@@ -125,6 +125,11 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
     function setManager(address _manager) external onlyOwner {
         manager = IMiningManagerHook(_manager);
         emit ManagerSet(_manager);
+    }
+
+    function setPayToken(address _payToken) external onlyOwner {
+        require(_payToken != address(0), "token=0");
+        payToken = IERC20(_payToken);
     }
 
     function addModel(
@@ -240,9 +245,9 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         uint256 toProject = total - toPool;
 
         // pull USDC from buyer
-        require(usdc.transferFrom(msg.sender, poolTreasury, toPool), "usdc->pool");
+        require(payToken.transferFrom(msg.sender, poolTreasury, toPool), "paytoken->pool");
         if (toProject > 0) {
-            require(usdc.transferFrom(msg.sender, projectWallet, toProject), "usdc->project");
+            require(payToken.transferFrom(msg.sender, projectWallet, toProject), "paytoken->project");
         }
 
         uint40 nowTs = uint40(block.timestamp);
@@ -288,7 +293,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         uint256 cost = m.powerStepCost[stepIndex];
         require(cost > 0, "cost=0");
 
-        require(usdc.transferFrom(msg.sender, poolTreasury, cost), "usdc");
+        require(payToken.transferFrom(msg.sender, poolTreasury, cost), "paytoken");
 
         s.pendingPowerUpgradeBps += POWER_STEP_BPS;
         newPendingPowerBps = s.pendingPowerUpgradeBps;
@@ -312,7 +317,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         uint256 cost = m.hashStepCost[stepIndex];
         require(cost > 0, "cost=0");
 
-        require(usdc.transferFrom(msg.sender, poolTreasury, cost), "usdc");
+        require(payToken.transferFrom(msg.sender, poolTreasury, cost), "paytoken");
 
         s.pendingHashUpgradeBps += HASH_STEP_BPS;
         newPendingHashBps = s.pendingHashUpgradeBps;
@@ -356,7 +361,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         // notify manager if hash changed (owner must exist)
         address owner = _ownerOf(tokenId);
         if (owner != address(0) && newEffHash != oldEffHash) {
-            try manager.onMinerUpgradeHashChange(owner, tokenId, oldEffHash, newEffHash) {} catch {}
+            manager.onMinerUpgradeHashChange(owner, tokenId, oldEffHash, newEffHash);
         }
     }
 
@@ -371,7 +376,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
             // guard: during mint, state is now set BEFORE _safeMint, so modelId != 0
             // during burn, modelId might still be set, but to==0 is fine
             if (modelId != 0) {
-                try manager.onMinerTransfer(from, to, tokenId, 0) {} catch {}
+                manager.onMinerTransfer(from, to, tokenId, 0);
             }
         }
 
@@ -383,8 +388,6 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         return super.supportsInterface(interfaceId);
     }
 }
-
-
 
 
 

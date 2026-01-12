@@ -11,7 +11,7 @@ import {MinerNFT} from "../src/nft/MinerNFT.sol";
 /*
     Env Vars:
       PRIVATE_KEY
-      USDC_ADDRESS
+      PAY_TOKEN_ADDRESS
       POOL_ADDRESS        // poolTreasury (Wallet/Multisig/Treasury-Contract), NICHT Uniswap Pool
       PROJECT_WALLET      // 5% vom Primärverkauf
       ROYALTY_WALLET      // 100% der Royalties (Receiver)
@@ -22,19 +22,19 @@ contract DeployMainnet is Script {
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
 
-        address USDC = vm.envAddress("USDC_ADDRESS");
+        address PAY = vm.envAddress("PAY_TOKEN_ADDRESS");
         address POOL = vm.envAddress("POOL_ADDRESS");
         address PROJECT = vm.envAddress("PROJECT_WALLET");
         address ROYALTY = vm.envAddress("ROYALTY_WALLET");
         uint96 ROYALTY_BPS = uint96(vm.envUint("ROYALTY_BPS"));
 
-        require(USDC != address(0) && POOL != address(0), "usdc/pool=0");
+        require(PAY != address(0) && POOL != address(0), "pay/pool=0");
         require(PROJECT != address(0) && ROYALTY != address(0), "project/royalty=0");
 
         vm.startBroadcast(pk);
 
-        MiningManager manager = new MiningManager(USDC, POOL);
-        MinerNFT miner = new MinerNFT(USDC, POOL, PROJECT, ROYALTY, ROYALTY_BPS);
+        MiningManager manager = new MiningManager(PAY, POOL);
+        MinerNFT miner = new MinerNFT(PAY, POOL, PROJECT, ROYALTY, ROYALTY_BPS);
         MeBTC mebtc = new MeBTC(address(manager));
 
         manager.init(address(mebtc), address(miner));
@@ -42,7 +42,7 @@ contract DeployMainnet is Script {
 
         vm.stopBroadcast();
 
-        console2.log("USDC:    ", USDC);
+        console2.log("PAY:     ", PAY);
         console2.log("POOL:    ", POOL);
         console2.log("PROJECT: ", PROJECT);
         console2.log("ROYALTY: ", ROYALTY);
@@ -51,4 +51,3 @@ contract DeployMainnet is Script {
         console2.log("MeBTC:   ", address(mebtc));
     }
 }
-
