@@ -2,6 +2,7 @@ import { ref, watchEffect } from 'vue'
 import { Contract } from 'ethers'
 import { ADDRESSES, TOKENS } from '../contracts/addresses'
 import { useWallet } from './useWallet'
+import { useGlobalRefresh } from './useGlobalRefresh'
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)'
@@ -9,6 +10,7 @@ const ERC20_ABI = [
 
 export function useBalances() {
   const { address, readProvider } = useWallet()
+  const { refreshKey } = useGlobalRefresh()
 
   const mebtc = ref<bigint>(0n)
   const usdc = ref<bigint>(0n)
@@ -18,6 +20,7 @@ export function useBalances() {
   const usdcDecimals = TOKENS.usdc.decimals
 
   watchEffect(async () => {
+    refreshKey.value
     const a = address.value
     if (!a) {
       mebtc.value = 0n
@@ -41,5 +44,4 @@ export function useBalances() {
 
   return { mebtc, usdc, loading, mebtcDecimals, usdcDecimals }
 }
-
 

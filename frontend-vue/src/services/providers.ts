@@ -1,11 +1,11 @@
 import { BrowserProvider, JsonRpcProvider } from 'ethers'
-import { FUJI } from '../contracts/chain'
+import { TARGET_CHAIN } from '../contracts/chain'
 
 let cachedReadProvider: JsonRpcProvider | undefined
 
 export function getReadProvider(): JsonRpcProvider {
   if (!cachedReadProvider) {
-    cachedReadProvider = new JsonRpcProvider(FUJI.rpcUrl)
+    cachedReadProvider = new JsonRpcProvider(TARGET_CHAIN.rpcUrl)
   }
   return cachedReadProvider
 }

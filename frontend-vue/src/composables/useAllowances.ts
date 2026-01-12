@@ -2,6 +2,7 @@ import { ref, watchEffect } from 'vue'
 import { Contract, formatUnits } from 'ethers'
 import { ADDRESSES, TOKENS } from '../contracts/addresses'
 import { useWallet } from './useWallet'
+import { useGlobalRefresh } from './useGlobalRefresh'
 
 const ERC20_ABI = [
   'function allowance(address owner, address spender) view returns (uint256)'
@@ -9,12 +10,14 @@ const ERC20_ABI = [
 
 export function useAllowances() {
   const { address, readProvider } = useWallet()
+  const { refreshKey } = useGlobalRefresh()
 
   const loading = ref(false)
   const allowanceMiner = ref<bigint>(0n)
   const allowanceManager = ref<bigint>(0n)
 
   watchEffect(async () => {
+    refreshKey.value
     const a = address.value
     if (!a) {
       allowanceMiner.value = 0n
@@ -55,6 +58,5 @@ export function useAllowances() {
     allowanceManagerText
   }
 }
-
 
 

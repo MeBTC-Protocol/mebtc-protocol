@@ -2,6 +2,8 @@ import { ref } from 'vue'
 import { Contract } from 'ethers'
 import { ADDRESSES } from '../contracts/addresses'
 import { useWallet } from './useWallet'
+import { useMinerStatsRefresh } from './useMinerStatsRefresh'
+import { useGlobalRefresh } from './useGlobalRefresh'
 
 const MINER_ACTION_ABI = [
   'function buyFromModel(uint16 modelId, uint256 quantity) returns (uint256)',
@@ -11,6 +13,8 @@ const MINER_ACTION_ABI = [
 
 export function useMinerActions() {
   const w = useWallet()
+  const { triggerRefresh } = useMinerStatsRefresh()
+  const { triggerRefresh: triggerGlobalRefresh } = useGlobalRefresh()
 
   const busy = ref(false)
   const error = ref('')
@@ -46,6 +50,7 @@ export function useMinerActions() {
       const tx = await miner.buyFromModel(modelId, qty)
       lastTx.value = tx.hash
       await tx.wait()
+      triggerGlobalRefresh('buy-miner', { rescanOwned: true })
     })
   }
 
@@ -54,6 +59,8 @@ export function useMinerActions() {
       const tx = await miner.requestUpgradePower(tokenId)
       lastTx.value = tx.hash
       await tx.wait()
+      triggerRefresh()
+      triggerGlobalRefresh('upgrade-power')
     })
   }
 
@@ -62,6 +69,8 @@ export function useMinerActions() {
       const tx = await miner.requestUpgradeHash(tokenId)
       lastTx.value = tx.hash
       await tx.wait()
+      triggerRefresh()
+      triggerGlobalRefresh('upgrade-hash')
     })
   }
 

@@ -1,7 +1,8 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Contract, getAddress, id as keccakId, zeroPadValue } from 'ethers'
 import { useWallet } from './useWallet'
 import { ADDRESSES } from '../contracts/addresses'
+import { useGlobalRefresh } from './useGlobalRefresh'
 
 const MINER_ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
@@ -10,6 +11,14 @@ const MINER_ABI = [
 
 // ✅ Startblock nach deinem Wunsch
 const START_BLOCK = 49_900_000
+const BACKTRACK_BLOCKS = 500
+
+const CACHE_PREFIX = 'mebtc:owned-miners'
+
+type OwnedCache = {
+  lastBlock: number
+  owned: string[]
+}
 
 // Start-Chunk-Größe (wird bei Limit-Errors automatisch kleiner)
 const INITIAL_SPAN = 2_000
@@ -29,12 +38,40 @@ function isTooManyResultsError(e: any) {
 }
 
 export function useOwnedMinerTokenIds() {
-  const { address, readProvider, isConnected, onChain } = useWallet()
+  const { address, readProvider, isConnected, onChain, chainId } = useWallet()
+  const { refreshKey, rescanOwned } = useGlobalRefresh()
+  const lastRefresh = ref(refreshKey.value)
 
   const owned = ref<bigint[]>([])
   const busy = ref(false)
   const msg = ref('')
   const error = ref('')
+
+  function getCacheKey(addr?: string) {
+    if (!addr || !chainId.value) return undefined
+    return `${CACHE_PREFIX}:${chainId.value}:${addr.toLowerCase()}`
+  }
+
+  function readCache(key: string): OwnedCache | undefined {
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw) return undefined
+      const parsed = JSON.parse(raw)
+      if (typeof parsed?.lastBlock !== 'number' || !Array.isArray(parsed?.owned)) return undefined
+      const owned = parsed.owned.filter((v: any) => typeof v === 'string')
+      return { lastBlock: parsed.lastBlock, owned }
+    } catch {
+      return undefined
+    }
+  }
+
+  function writeCache(key: string, cache: OwnedCache) {
+    try {
+      localStorage.setItem(key, JSON.stringify(cache))
+    } catch {
+      // ignore
+    }
+  }
 
   async function getLogsPaged(params: {
     fromBlock: number
@@ -101,6 +138,12 @@ export function useOwnedMinerTokenIds() {
       return
     }
 
+    const cacheKey = getCacheKey(address.value)
+    const cached = cacheKey ? readCache(cacheKey) : undefined
+    if (cached?.owned?.length) {
+      owned.value = cached.owned.map(x => BigInt(x))
+    }
+
     busy.value = true
     try {
       const p = readProvider.value
@@ -113,7 +156,11 @@ export function useOwnedMinerTokenIds() {
       const topicUser = zeroPadValue(user, 32).toLowerCase()
 
       const latest = await p.getBlockNumber()
-      const fromBlock = Math.min(START_BLOCK, latest)
+      let fromBlock = Math.min(START_BLOCK, latest)
+      if (cached?.lastBlock && cached.lastBlock > 0) {
+        fromBlock = Math.max(START_BLOCK, Math.max(0, cached.lastBlock - BACKTRACK_BLOCKS))
+        if (fromBlock > latest) fromBlock = latest
+      }
 
       msg.value = `start scan from block ${fromBlock} to ${latest}…`
 
@@ -133,6 +180,9 @@ export function useOwnedMinerTokenIds() {
 
       // Candidate set
       const candidate = new Set<string>()
+      if (cached?.owned?.length) {
+        for (const id of cached.owned) candidate.add(id)
+      }
       for (const l of logsTo) {
         const tokenId = BigInt(l.topics[3])
         candidate.add(tokenId.toString())
@@ -159,6 +209,9 @@ export function useOwnedMinerTokenIds() {
 
       owned.value = ids
       msg.value = `found ${ids.length} miners`
+      if (cacheKey) {
+        writeCache(cacheKey, { lastBlock: latest, owned: ids.map(x => x.toString()) })
+      }
     } catch (e: any) {
       error.value = e?.shortMessage ?? e?.message ?? String(e)
     } finally {
@@ -166,7 +219,15 @@ export function useOwnedMinerTokenIds() {
     }
   }
 
+  watch(
+    [() => refreshKey.value, () => rescanOwned.value],
+    async ([key, shouldRescan]) => {
+      if (key === lastRefresh.value) return
+      lastRefresh.value = key
+      if (!shouldRescan) return
+      await rescan()
+    }
+  )
+
   return { owned, busy, msg, error, rescan }
 }
-
-

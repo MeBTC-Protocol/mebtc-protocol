@@ -1,7 +1,7 @@
 import { computed, toRefs } from 'vue'
 import { BrowserProvider, type Eip1193Provider, type JsonRpcProvider } from 'ethers'
 import { useAppKitAccount, useAppKitNetwork, useAppKitProvider } from '@reown/appkit/vue'
-import { FUJI } from '../contracts/chain'
+import { TARGET_CHAIN } from '../contracts/chain'
 import { getReadProvider } from '../services/readProvider'
 
 export function useWallet() {
@@ -18,13 +18,14 @@ export function useWallet() {
   })
 
   const chainId = computed<number | undefined>(() => {
+    if (!isConnected.value) return undefined
     const raw: any = network.value?.chainId
     if (typeof raw === 'number') return raw
     if (typeof raw === 'string' && raw.length > 0) return Number(raw)
     return undefined
   })
 
-  const onChain = computed(() => chainId.value === FUJI.chainId)
+  const onChain = computed(() => isConnected.value && chainId.value === TARGET_CHAIN.chainId)
 
   // ✅ Read Provider (RPC) -> immer verfügbar
   const readProvider = computed<JsonRpcProvider>(() => getReadProvider())
@@ -58,5 +59,4 @@ export function useWallet() {
     getSigner
   }
 }
-
 

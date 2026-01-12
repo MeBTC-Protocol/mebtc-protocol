@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Card from "../common/Card.vue"
+import Button from "../common/Button.vue"
 import { formatUnits } from "ethers"
 import { TOKENS } from "../../contracts/addresses"
 
@@ -25,15 +26,14 @@ function toggle(id: bigint, checked: boolean) {
 </script>
 
 <template>
-  <Card title="claim">
+  <Card title="Claim">
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-      <button
+      <Button
         :disabled="disabled || busy"
         @click="() => onClaim().catch(() => {})"
-        style="padding:10px 12px;border-radius:12px;border:1px solid #999;background:transparent;cursor:pointer;"
       >
-        claim selected
-      </button>
+        Claim selected
+      </Button>
 
       <div style="opacity:.8;">
         fee selected: {{ formatUnits(totalFeeSelected, TOKENS.usdc.decimals) }} {{ TOKENS.usdc.symbol }}

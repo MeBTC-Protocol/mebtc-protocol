@@ -1,12 +1,14 @@
 import { computed, ref } from 'vue'
 import { useWallet } from './useWallet'
 import { claimMinerBatch } from '../services/minerClaimService'
+import { useGlobalRefresh } from './useGlobalRefresh'
 
 export function useClaimSelected(params: {
   owned: () => bigint[]
   previewMap: () => Map<string, { reward: bigint; fee: bigint }>
 }) {
   const w = useWallet()
+  const { triggerRefresh } = useGlobalRefresh()
 
   const selected = ref<Record<string, boolean>>({})
   const busy = ref(false)
@@ -73,6 +75,7 @@ export function useClaimSelected(params: {
       })
       lastApproveTx.value = res.approveTxHash ?? ''
       lastTx.value = res.claimTxHash
+      triggerRefresh('claim-miner', { rescanOwned: true })
     } catch (e: any) {
       error.value = e?.shortMessage ?? e?.message ?? String(e)
     } finally {
@@ -91,6 +94,5 @@ export function useClaimSelected(params: {
     claim
   }
 }
-
 
 

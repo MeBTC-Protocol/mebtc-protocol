@@ -1,11 +1,11 @@
 import { JsonRpcProvider } from 'ethers'
-import { FUJI } from '../contracts/chain'
+import { TARGET_CHAIN } from '../contracts/chain'
 
 let provider: JsonRpcProvider | null = null
 
 export function getReadProvider(): JsonRpcProvider {
   if (!provider) {
-    provider = new JsonRpcProvider(FUJI.rpcUrl)
+    provider = new JsonRpcProvider(TARGET_CHAIN.rpcUrl)
   }
   return provider
 }

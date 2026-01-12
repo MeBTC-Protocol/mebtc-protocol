@@ -37,7 +37,10 @@ export const ENV = {
 
   FUJI_RPC_URL: normalizeRpcUrl(
     optional('VITE_FUJI_RPC_URL', 'https://api.avax-test.network/ext/bc/C/rpc')
-  )
+  ),
+  AVALANCHE_RPC_URL: normalizeRpcUrl(
+    optional('VITE_AVALANCHE_RPC_URL', 'https://api.avax.network/ext/bc/C/rpc')
+  ),
+  TARGET_CHAIN_ID: optional('VITE_TARGET_CHAIN_ID', '43113')
 } as const
-
 

@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { Contract, MaxUint256 } from 'ethers'
 import { ADDRESSES } from '../contracts/addresses'
 import { useWallet } from './useWallet'
+import { useGlobalRefresh } from './useGlobalRefresh'
 
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)'
@@ -9,6 +10,7 @@ const ERC20_ABI = [
 
 export function useApproveUSDC() {
   const { getSigner, isConnected, onChain } = useWallet()
+  const { triggerRefresh } = useGlobalRefresh()
 
   const busy = ref(false)
   const error = ref('')
@@ -28,6 +30,7 @@ export function useApproveUSDC() {
       const tx = await usdc.approve(spender, amount)
       lastTx.value = tx.hash
       await tx.wait()
+      triggerRefresh('approve-usdc')
     } catch (e: any) {
       error.value = e?.shortMessage ?? e?.message ?? String(e)
       throw e
@@ -62,4 +65,3 @@ export function useApproveUSDC() {
     approveMinerMax
   }
 }
-
