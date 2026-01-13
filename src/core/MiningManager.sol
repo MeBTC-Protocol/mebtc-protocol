@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /*
@@ -62,6 +63,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
     mapping(uint256 => uint256) public lastSettleTime;
     mapping(uint256 => uint256) public debtUSDC;
     mapping(uint256 => uint256) public lastClaimedBlockIndex;
+    mapping(uint256 => uint256) public currentEffHash;
 
     event Updated(uint256 slots, uint256 minted, uint256 acc);
     event RewardsClaimed(address indexed user, uint256 reward, uint256 fee);
@@ -69,6 +71,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
     event MinerUpgraded(address indexed owner, uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
     event Initialized(address mebtc, address miner);
     event PayTokenUpdated(address indexed oldToken, address indexed newToken);
+    event MinerResynced(uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
 
     modifier onlyInit() {
         require(msg.sender == initializer, "!init");
@@ -77,6 +80,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
 
     constructor(address _payToken, address _pool) Ownable(msg.sender) {
         require(_payToken != address(0) && _pool != address(0), "arg=0");
+        require(IERC20Metadata(_payToken).decimals() == 6, "decimals");
         payToken = IERC20(_payToken);
         pool = _pool;
 
@@ -87,6 +91,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
 
     function setPayToken(address _payToken) external onlyOwner {
         require(_payToken != address(0), "token=0");
+        require(IERC20Metadata(_payToken).decimals() == 6, "decimals");
         address oldToken = address(payToken);
         payToken = IERC20(_payToken);
         emit PayTokenUpdated(oldToken, _payToken);
@@ -127,6 +132,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
             }
             totalEffectiveHash += effHash;
         }
+        currentEffHash[tokenId] = (to == address(0)) ? 0 : effHash;
 
         emit MinerMoved(from, to, tokenId, effHash);
     }
@@ -144,7 +150,37 @@ contract MiningManager is ReentrancyGuard, Ownable {
             totalEffectiveHash -= (oldEffHash - newEffHash);
         }
 
+        currentEffHash[tokenId] = newEffHash;
         emit MinerUpgraded(owner, tokenId, oldEffHash, newEffHash);
+    }
+
+    function resyncMiner(uint256 tokenId) external {
+        address owner;
+        try minerNFT.ownerOf(tokenId) returns (address o) {
+            owner = o;
+        } catch {
+            owner = address(0);
+        }
+
+        uint256 expectedHash;
+        if (owner != address(0)) {
+            (uint256 effHash,,) = minerNFT.getMinerData(tokenId);
+            expectedHash = effHash;
+        }
+
+        uint256 current = currentEffHash[tokenId];
+        if (current == expectedHash) return;
+
+        if (expectedHash > current) {
+            totalEffectiveHash += (expectedHash - current);
+        } else {
+            uint256 diff = current - expectedHash;
+            require(totalEffectiveHash >= diff, "total");
+            totalEffectiveHash -= diff;
+        }
+
+        currentEffHash[tokenId] = expectedHash;
+        emit MinerResynced(tokenId, current, expectedHash);
     }
 
     function claim(uint256[] calldata ids) external nonReentrant {

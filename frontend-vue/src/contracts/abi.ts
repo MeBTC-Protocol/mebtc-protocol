@@ -31,6 +31,13 @@ export const erc20Abi = [
 export const minerNftAbi = [
   {
     type: 'function',
+    name: 'payToken',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'address' }]
+  },
+  {
+    type: 'function',
     name: 'balanceOf',
     stateMutability: 'view',
     inputs: [{ name: 'owner', type: 'address' }],
@@ -58,6 +65,13 @@ export const minerNftAbi = [
 export const miningManagerAbi = [
   {
     type: 'function',
+    name: 'payToken',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'address' }]
+  },
+  {
+    type: 'function',
     name: 'claim',
     stateMutability: 'nonpayable',
     inputs: [{ name: 'tokenIds', type: 'uint256[]' }],
@@ -77,4 +91,3 @@ export const miningManagerAbi = [
     ]
   }
 ] as const
-

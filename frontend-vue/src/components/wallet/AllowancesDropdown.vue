@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { formatUnits } from 'ethers'
-import { TOKENS } from '../../contracts/addresses'
 import Button from '../common/Button.vue'
 
-defineProps<{
+const props = defineProps<{
   disabled: boolean
   loading: boolean
   busy: boolean
   minerText: string
   managerText: string
+  payTokenSymbol: string
+  payTokenDecimals: number
   error: string
   lastTx: string
   onApproveMiner: () => void
@@ -22,7 +23,7 @@ defineProps<{
 }>()
 
 function fmt(v: bigint) {
-  return formatUnits(v, TOKENS.usdc.decimals)
+  return formatUnits(v, props.payTokenDecimals)
 }
 
 function needsApprove(minerMissing: bigint, managerMissing: bigint) {
@@ -33,7 +34,7 @@ function needsApprove(minerMissing: bigint, managerMissing: bigint) {
 <template>
   <details style="border:1px solid #999;border-radius:10px;padding:6px 8px;">
     <summary style="cursor:pointer;list-style:none;font-size:12px;display:flex;align-items:center;gap:8px;">
-      <span>USDC Allowances</span>
+      <span>{{ payTokenSymbol }} Allowances</span>
       <span
         v-if="needsApprove(approveExactMissing, approveManagerExactMissing)"
         style="font-size:10px;padding:2px 6px;border-radius:999px;border:1px solid #b00;color:#b00;"
@@ -52,28 +53,28 @@ function needsApprove(minerMissing: bigint, managerMissing: bigint) {
             @click="onApproveExact(approveExactValue)"
             size="sm"
           >
-            approve USDC für MinerNFT exact (missing {{ fmt(approveExactMissing) }} {{ TOKENS.usdc.symbol }})
+            approve {{ payTokenSymbol }} für MinerNFT exact (missing {{ fmt(approveExactMissing) }} {{ payTokenSymbol }})
           </Button>
           <Button
             :disabled="disabled || busy || approveManagerExactMissing === 0n"
             @click="onApproveManagerExact(approveManagerExactValue)"
             size="sm"
           >
-            approve USDC für Manager exact (missing {{ fmt(approveManagerExactMissing) }} {{ TOKENS.usdc.symbol }})
+            approve {{ payTokenSymbol }} für Manager exact (missing {{ fmt(approveManagerExactMissing) }} {{ payTokenSymbol }})
           </Button>
           <Button
             :disabled="disabled || busy"
             @click="onApproveMiner"
             size="sm"
           >
-            approve USDC für MinerNFT (max, optional)
+            approve {{ payTokenSymbol }} für MinerNFT (max, optional)
           </Button>
           <Button
             :disabled="disabled || busy"
             @click="onApproveManager"
             size="sm"
           >
-            approve USDC für Manager (max, optional)
+            approve {{ payTokenSymbol }} für Manager (max, optional)
           </Button>
         </div>
         <div v-if="error" style="margin-top:8px;">approve error: {{ error }}</div>

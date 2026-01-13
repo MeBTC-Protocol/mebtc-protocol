@@ -7,10 +7,11 @@ import AllowancesDropdown from './AllowancesDropdown.vue'
 
 const props = defineProps<{
   mebtc: bigint
-  usdc: bigint
+  payToken: bigint
   loading: boolean
   mebtcDecimals: number
-  usdcDecimals: number
+  payTokenDecimals: number
+  payTokenSymbol: string
 
   // NEU:
   disabled: boolean
@@ -44,8 +45,8 @@ const props = defineProps<{
       </div>
 
       <div>
-        USDC:
-        <b>{{ formatUnits(usdc, usdcDecimals) }} {{ TOKENS.usdc.symbol }}</b>
+        {{ payTokenSymbol }}:
+        <b>{{ formatUnits(payToken, payTokenDecimals) }} {{ payTokenSymbol }}</b>
       </div>
 
       <div style="margin-top:6px;">
@@ -55,6 +56,8 @@ const props = defineProps<{
           :busy="allowancesBusy"
           :minerText="allowanceMinerText"
           :managerText="allowanceManagerText"
+          :payTokenSymbol="payTokenSymbol"
+          :payTokenDecimals="payTokenDecimals"
           :error="approveError"
           :lastTx="approveLastTx"
           :onApproveMiner="onApproveMiner"

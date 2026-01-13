@@ -15,6 +15,8 @@ const props = defineProps<{
   lastApproveTx: string
   totalFeeSelected: bigint
   allowanceManagerText: string
+  payTokenSymbol: string
+  payTokenDecimals: number
   setSelected: (next: Record<string, boolean>) => void
   onClaim: () => void
 }>()
@@ -36,11 +38,11 @@ function toggle(id: bigint, checked: boolean) {
       </Button>
 
       <div style="opacity:.8;">
-        fee selected: {{ formatUnits(totalFeeSelected, TOKENS.usdc.decimals) }} {{ TOKENS.usdc.symbol }}
+        fee selected: {{ formatUnits(totalFeeSelected, payTokenDecimals) }} {{ payTokenSymbol }}
       </div>
 
       <div style="opacity:.8;">
-        allowance manager: {{ allowanceManagerText }} {{ TOKENS.usdc.symbol }}
+        allowance manager: {{ allowanceManagerText }} {{ payTokenSymbol }}
       </div>
     </div>
 
@@ -60,7 +62,7 @@ function toggle(id: bigint, checked: boolean) {
           <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">select</th>
           <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">tokenId</th>
           <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">reward</th>
-          <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">fee (usdc)</th>
+          <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">fee</th>
         </tr>
       </thead>
       <tbody>
@@ -81,7 +83,7 @@ function toggle(id: bigint, checked: boolean) {
           </td>
           <td style="border-bottom:1px solid #ddd;padding:8px 6px;">
             <span v-if="previewMap.get(id.toString())">
-              {{ formatUnits(previewMap.get(id.toString())!.fee, TOKENS.usdc.decimals) }}
+              {{ formatUnits(previewMap.get(id.toString())!.fee, payTokenDecimals) }}
             </span>
             <span v-else>-</span>
           </td>

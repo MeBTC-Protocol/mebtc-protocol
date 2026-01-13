@@ -2,6 +2,7 @@ import { Contract, formatUnits } from "ethers"
 import type { JsonRpcProvider, Signer } from "ethers"
 import { ADDRESSES, TOKENS } from "../contracts/addresses"
 import { miningManagerAbi, erc20Abi } from "../contracts/abi"
+import { fetchPayTokenAddress } from "./payToken"
 
 export type ClaimPreview = {
   tokenId: bigint
@@ -19,12 +20,14 @@ function miningManagerWrite(signer: Signer) {
   return new Contract(ADDRESSES.miningManager, miningManagerAbi, signer)
 }
 
-function usdcRead(provider: JsonRpcProvider) {
-  return new Contract(ADDRESSES.usdc, erc20Abi, provider)
+async function payTokenRead(provider: JsonRpcProvider) {
+  const token = await fetchPayTokenAddress(provider)
+  return new Contract(token, erc20Abi, provider)
 }
 
-function usdcWrite(signer: Signer) {
-  return new Contract(ADDRESSES.usdc, erc20Abi, signer)
+async function payTokenWrite(provider: JsonRpcProvider, signer: Signer) {
+  const token = await fetchPayTokenAddress(provider)
+  return new Contract(token, erc20Abi, signer)
 }
 
 /**
@@ -59,8 +62,8 @@ export async function getUsdcAllowance(
   owner: string,
   spender: string
 ): Promise<bigint> {
-  const usdc = usdcRead(provider)
-  const allowance = await usdc.allowance(owner, spender)
+  const payToken = await payTokenRead(provider)
+  const allowance = await payToken.allowance(owner, spender)
   return BigInt(allowance)
 }
 
@@ -84,8 +87,8 @@ export async function ensureUsdcAllowanceExact(params: {
   const current = await getUsdcAllowance(provider, owner, spender)
   if (current >= needed) return { approved: false }
 
-  const usdc = usdcWrite(signer)
-  const tx = await usdc.approve(spender, needed)
+  const payToken = await payTokenWrite(provider, signer)
+  const tx = await payToken.approve(spender, needed)
   await tx.wait()
 
   return { approved: true, approveTxHash: tx.hash }

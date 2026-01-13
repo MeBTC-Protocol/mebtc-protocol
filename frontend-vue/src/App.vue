@@ -27,7 +27,7 @@ const { isConnected, address, chainId, onChain } = useWallet()
 useWalletAutoRefresh()
 
 // balances
-const { mebtc, usdc, loading: balancesLoading, mebtcDecimals, usdcDecimals } = useBalances()
+const { mebtc, payToken, loading: balancesLoading, mebtcDecimals, payTokenDecimals, payTokenSymbol } = useBalances()
 const {
   totalMined,
   soldMiners,
@@ -166,10 +166,11 @@ function setApproveStats(payload: { missing: bigint; endValue: bigint }) {
       <BalancesCard
         style="grid-column:1 / span 2;"
         :mebtc="mebtc"
-        :usdc="usdc"
+        :payToken="payToken"
         :loading="balancesLoading"
         :mebtcDecimals="mebtcDecimals"
-        :usdcDecimals="usdcDecimals"
+        :payTokenDecimals="payTokenDecimals"
+        :payTokenSymbol="payTokenSymbol"
         :disabled="!isConnected || !onChain"
         :owned="owned"
         :allowancesLoading="allowancesLoading"
@@ -201,6 +202,8 @@ function setApproveStats(payload: { missing: bigint; endValue: bigint }) {
         :onBuyModel="buyFromModel"
         :onUpgradePower="requestUpgradePower"
         :onUpgradeHash="requestUpgradeHash"
+        :payTokenSymbol="payTokenSymbol"
+        :payTokenDecimals="payTokenDecimals"
         :owned="owned"
         @approve-stats="setApproveStats"
       />
@@ -224,6 +227,8 @@ function setApproveStats(payload: { missing: bigint; endValue: bigint }) {
         :lastApproveTx="lastApproveTx"
         :totalFeeSelected="totalFeeSelected"
         :allowanceManagerText="allowanceManagerText()"
+        :payTokenSymbol="payTokenSymbol"
+        :payTokenDecimals="payTokenDecimals"
         :onClaim="claim"
       />
     </div>

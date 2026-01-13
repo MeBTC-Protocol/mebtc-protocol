@@ -4,7 +4,10 @@ pragma solidity ^0.8.20;
 import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC2981} from "openzeppelin-contracts/contracts/token/common/ERC2981.sol";
+import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 /*
     MinerNFT (Model B)
@@ -28,7 +31,8 @@ interface IMiningManagerHook {
     function onMinerUpgradeHashChange(address owner, uint256 tokenId, uint256 oldEffHash, uint256 newEffHash) external;
 }
 
-contract MinerNFT is ERC721, ERC2981, Ownable {
+contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     // --------- constants ----------
     uint16 public constant MAX_STEPS = 4;
 
@@ -114,6 +118,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         require(_royaltyWallet != address(0), "royalty=0");
         require(_royaltyBps <= 10_000, "royalty>100%");
 
+        require(IERC20Metadata(_payToken).decimals() == 6, "decimals");
         payToken = IERC20(_payToken);
         poolTreasury = _poolTreasury;
         projectWallet = _projectWallet;
@@ -129,6 +134,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
 
     function setPayToken(address _payToken) external onlyOwner {
         require(_payToken != address(0), "token=0");
+        require(IERC20Metadata(_payToken).decimals() == 6, "decimals");
         payToken = IERC20(_payToken);
     }
 
@@ -231,7 +237,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
     }
 
     // --------- buying ----------
-    function buyFromModel(uint16 modelId, uint256 quantity) external returns (uint256 firstTokenId) {
+    function buyFromModel(uint16 modelId, uint256 quantity) external nonReentrant returns (uint256 firstTokenId) {
         require(quantity > 0, "qty=0");
         Model storage m = models[modelId];
         require(m.maxSupply > 0, "model!");
@@ -245,9 +251,9 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         uint256 toProject = total - toPool;
 
         // pull USDC from buyer
-        require(payToken.transferFrom(msg.sender, poolTreasury, toPool), "paytoken->pool");
+        payToken.safeTransferFrom(msg.sender, poolTreasury, toPool);
         if (toProject > 0) {
-            require(payToken.transferFrom(msg.sender, projectWallet, toProject), "paytoken->project");
+            payToken.safeTransferFrom(msg.sender, projectWallet, toProject);
         }
 
         uint40 nowTs = uint40(block.timestamp);
@@ -277,7 +283,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
     }
 
     // --------- upgrades (pending until claim) ----------
-    function requestUpgradePower(uint256 tokenId) external returns (uint16 newPendingPowerBps) {
+    function requestUpgradePower(uint256 tokenId) external nonReentrant returns (uint16 newPendingPowerBps) {
         require(ownerOf(tokenId) == msg.sender, "!owner");
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
@@ -293,7 +299,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         uint256 cost = m.powerStepCost[stepIndex];
         require(cost > 0, "cost=0");
 
-        require(payToken.transferFrom(msg.sender, poolTreasury, cost), "paytoken");
+        payToken.safeTransferFrom(msg.sender, poolTreasury, cost);
 
         s.pendingPowerUpgradeBps += POWER_STEP_BPS;
         newPendingPowerBps = s.pendingPowerUpgradeBps;
@@ -301,7 +307,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         emit UpgradeRequestedPower(tokenId, newPendingPowerBps, cost);
     }
 
-    function requestUpgradeHash(uint256 tokenId) external returns (uint16 newPendingHashBps) {
+    function requestUpgradeHash(uint256 tokenId) external nonReentrant returns (uint16 newPendingHashBps) {
         require(ownerOf(tokenId) == msg.sender, "!owner");
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
@@ -317,7 +323,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         uint256 cost = m.hashStepCost[stepIndex];
         require(cost > 0, "cost=0");
 
-        require(payToken.transferFrom(msg.sender, poolTreasury, cost), "paytoken");
+        payToken.safeTransferFrom(msg.sender, poolTreasury, cost);
 
         s.pendingHashUpgradeBps += HASH_STEP_BPS;
         newPendingHashBps = s.pendingHashUpgradeBps;
@@ -388,7 +394,5 @@ contract MinerNFT is ERC721, ERC2981, Ownable {
         return super.supportsInterface(interfaceId);
     }
 }
-
-
 
 

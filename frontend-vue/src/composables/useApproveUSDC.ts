@@ -3,13 +3,14 @@ import { Contract, MaxUint256 } from 'ethers'
 import { ADDRESSES } from '../contracts/addresses'
 import { useWallet } from './useWallet'
 import { useGlobalRefresh } from './useGlobalRefresh'
+import { fetchPayTokenAddress } from '../services/payToken'
 
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)'
 ]
 
 export function useApproveUSDC() {
-  const { getSigner, isConnected, onChain } = useWallet()
+  const { getSigner, isConnected, onChain, readProvider } = useWallet()
   const { triggerRefresh } = useGlobalRefresh()
 
   const busy = ref(false)
@@ -26,8 +27,9 @@ export function useApproveUSDC() {
     busy.value = true
     try {
       const signer = await getSigner()
-      const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, signer)
-      const tx = await usdc.approve(spender, amount)
+      const token = await fetchPayTokenAddress(readProvider.value)
+      const payToken = new Contract(token, ERC20_ABI, signer)
+      const tx = await payToken.approve(spender, amount)
       lastTx.value = tx.hash
       await tx.wait()
       triggerRefresh('approve-usdc')

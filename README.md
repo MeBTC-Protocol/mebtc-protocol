@@ -1,6 +1,6 @@
-## Foundry
+## MeBTC Contracts (Foundry)
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Minimal docs for the MeBTC contracts and scripts. Frontend docs live elsewhere.
 
 Foundry consists of:
 
@@ -48,7 +48,7 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ forge script script/DeployMainnet.s.sol:DeployMainnet --rpc-url <your_rpc_url> --broadcast
 ```
 
 ### Cast
@@ -63,4 +63,51 @@ $ cast <subcommand>
 $ forge --help
 $ anvil --help
 $ cast --help
+```
+
+## Scripts
+
+### Deploy (Mainnet)
+
+Env:
+```
+PRIVATE_KEY
+PAY_TOKEN_ADDRESS
+POOL_ADDRESS
+PROJECT_WALLET
+ROYALTY_WALLET
+ROYALTY_BPS
+```
+
+### SetPayToken
+
+Switches the payment token on both contracts (owner only).
+
+Env:
+```
+PRIVATE_KEY
+MANAGER_ADDRESS
+MINER_ADDRESS
+PAY_TOKEN_ADDRESS
+```
+
+Run:
+```
+forge script script/SetPayToken.s.sol:SetPayToken --rpc-url <rpc> --broadcast
+```
+
+### ResyncMiner
+
+Permissionless resync helper for a single miner.
+
+Env:
+```
+PRIVATE_KEY
+MANAGER_ADDRESS
+TOKEN_ID
+```
+
+Run:
+```
+forge script script/ResyncMiner.s.sol:ResyncMiner --rpc-url <rpc> --broadcast
 ```

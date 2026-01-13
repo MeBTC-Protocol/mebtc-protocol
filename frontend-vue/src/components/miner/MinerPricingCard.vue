@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue'
 import { formatUnits } from 'ethers'
 import Card from '../common/Card.vue'
 import Button from '../common/Button.vue'
-import { TOKENS } from '../../contracts/addresses'
 import { useMinerModels } from '../../composables/useMinerModels'
 import { useMinerUpgradeStates } from '../../composables/useMinerUpgradeStates'
 
@@ -24,6 +23,8 @@ const props = defineProps<{
   onBuyModel: (modelId: number, qty: number) => void
   onUpgradePower: (tokenId: bigint) => void
   onUpgradeHash: (tokenId: bigint) => void
+  payTokenSymbol: string
+  payTokenDecimals: number
   owned: bigint[]
 }>()
 
@@ -47,7 +48,7 @@ function bn(v: unknown): bigint {
 }
 
 function fmt(v: unknown) {
-  return formatUnits(bn(v), TOKENS.usdc.decimals)
+  return formatUnits(bn(v), props.payTokenDecimals)
 }
 
 const selectedModel = computed(() => models.value.find(m => m.modelId === selectedModelId.value))
@@ -116,7 +117,7 @@ const upgradeNextCostText = computed(() => {
   const powerText = typeof powerCost === 'bigint' ? fmt(powerCost) : '-'
   const hashText = typeof hashCost === 'bigint' ? fmt(hashCost) : '-'
 
-  return `next cost:P ${powerText} ${TOKENS.usdc.symbol} |H ${hashText} ${TOKENS.usdc.symbol}`
+  return `next cost:P ${powerText} ${props.payTokenSymbol} |H ${hashText} ${props.payTokenSymbol}`
 })
 
 watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
@@ -147,7 +148,7 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
 
         <div style="opacity:.8;">
           price:
-          <b>{{ fmt(neededForBuy) }} {{ TOKENS.usdc.symbol }}</b>
+          <b>{{ fmt(neededForBuy) }} {{ payTokenSymbol }}</b>
         </div>
 
         <Button
@@ -168,11 +169,11 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
 
         <div style="margin-top:8px;">
           <div>
-            <b>power step costs (usdc):</b>
+            <b>power step costs ({{ payTokenSymbol }}):</b>
             {{ powerCosts.map(x => fmt(x)).join(' | ') }}
           </div>
           <div>
-            <b>hash step costs (usdc):</b>
+            <b>hash step costs ({{ payTokenSymbol }}):</b>
             {{ hashCosts.map(x => fmt(x)).join(' | ') }}
           </div>
         </div>
