@@ -12,25 +12,32 @@ export function useMinerPreviews(getOwned: () => bigint[]) {
   const previewMap = ref<Map<string, PreviewEntry>>(new Map())
   const busy = ref(false)
   const error = ref('')
+  const pending = ref(false)
   const refreshMs = 120_000
 
   const ownedKeys = computed(() => getOwned().map(x => x.toString()))
 
   async function refresh() {
     error.value = ''
-    if (busy.value) return
 
     const provider = w.readProvider.value
     const owner = w.address.value
 
     if (!w.isConnected.value || !w.onChain.value || !owner) {
       previewMap.value = new Map()
+      pending.value = false
       return
     }
 
     const ids = getOwned()
     if (ids.length === 0) {
       previewMap.value = new Map()
+      pending.value = false
+      return
+    }
+
+    if (busy.value) {
+      pending.value = true
       return
     }
 
@@ -46,6 +53,10 @@ export function useMinerPreviews(getOwned: () => bigint[]) {
       error.value = e?.shortMessage ?? e?.message ?? String(e)
     } finally {
       busy.value = false
+      if (pending.value) {
+        pending.value = false
+        await refresh()
+      }
     }
   }
 

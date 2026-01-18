@@ -12,9 +12,9 @@ defineProps<{
 
 <template>
   <div style="min-width:220px;">
-    <details style="border:1px solid #999;border-radius:10px;padding:6px 8px;background:#f7f7f7;box-shadow:0 2px 4px rgba(0,0,0,0.08);">
-      <summary style="cursor:pointer;list-style:none;font-size:12px;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:#fff;border:1px solid #ddd;">
-        <span style="display:inline-flex;align-items:center;gap:6px;">
+    <details class="ui-dropdown">
+      <summary>
+        <span class="ui-row">
           <svg
             viewBox="0 0 24 24"
             width="14"
@@ -34,12 +34,10 @@ defineProps<{
           </svg>
           <span>Wallet</span>
         </span>
-        <span
-          :style="`width:8px;height:8px;border-radius:50%;display:inline-block;background:${connected ? '#0a0' : '#b00'};`"
-        />
+        <span class="ui-dot" :style="`background:${connected ? '#0a0' : '#b00'};`" />
       </summary>
       <div style="margin-top:8px;">
-        <div style="display:grid;gap:2px;font-size:10px;line-height:1.05;">
+        <div class="ui-meta">
           <div>connectet: {{ String(connected) }}</div>
           <div>address: {{ shortAddr(address) }}</div>
           <div v-if="connected">chain: {{ chainId }}</div>

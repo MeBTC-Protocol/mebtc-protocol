@@ -92,8 +92,13 @@ contract MeBTCTest is Test {
 
         vm.warp(block.timestamp + 1);
         (uint256 r1, uint256 f1) = manager.preview(tokenId, user);
-        assertGt(r1, 0);
-        assertGt(f1, 0);
+        assertEq(r1, 0);
+        assertEq(f1, 0);
+
+        vm.warp(block.timestamp + manager.CLAIM_INTERVAL());
+        (uint256 r2, uint256 f2) = manager.preview(tokenId, user);
+        assertGt(r2, 0);
+        assertGt(f2, 0);
     }
 
     function test_ClaimOnlyAfterGlobalSlot() public {
@@ -107,7 +112,7 @@ contract MeBTCTest is Test {
         vm.expectRevert(bytes("slot"));
         manager.claim(ids);
 
-        vm.warp(block.timestamp + manager.CLAIM_INTERVAL());
+        vm.warp(block.timestamp + manager.CLAIM_INTERVAL() * 2);
         manager.claim(ids);
         vm.stopPrank();
 

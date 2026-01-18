@@ -13,6 +13,7 @@ const ERC20_ABI = [
 export function useAllowances() {
   const { address, readProvider } = useWallet()
   const { refreshKey } = useGlobalRefresh()
+  let requestId = 0
 
   const loading = ref(false)
   const allowanceMiner = ref<bigint>(0n)
@@ -20,6 +21,7 @@ export function useAllowances() {
   const { decimals: payTokenDecimals } = usePayToken()
 
   watchEffect(async () => {
+    const rid = ++requestId
     refreshKey.value
     const a = address.value
     if (!a) {
@@ -34,10 +36,17 @@ export function useAllowances() {
       const token = await fetchPayTokenAddress(p)
       const payToken = new Contract(token, ERC20_ABI, p)
 
-      allowanceMiner.value = (await payToken.allowance(a, ADDRESSES.minerNft)) as bigint
-      allowanceManager.value = (await payToken.allowance(a, ADDRESSES.miningManager)) as bigint
+      const [minerRes, managerRes] = await Promise.all([
+        payToken.allowance(a, ADDRESSES.minerNft),
+        payToken.allowance(a, ADDRESSES.miningManager)
+      ])
+      if (rid !== requestId) return
+      allowanceMiner.value = minerRes as bigint
+      allowanceManager.value = managerRes as bigint
     } finally {
-      loading.value = false
+      if (rid === requestId) {
+        loading.value = false
+      }
     }
   })
 

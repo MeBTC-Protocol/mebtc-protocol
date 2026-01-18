@@ -13,10 +13,10 @@ defineProps<{ items: NewsItem[] }>()
 
 <template>
   <Card title="News">
-    <div v-if="!items || items.length === 0" style="opacity:.7;">keine news</div>
-    <div v-else style="display:flex;flex-direction:column;gap:10px;">
-      <div v-for="(item, idx) in items" :key="idx" style="display:flex;flex-direction:column;gap:4px;">
-        <div style="font-weight:600;line-height:1.2;">
+    <div v-if="!items || items.length === 0" class="ui-muted">keine news</div>
+    <div v-else class="news-list">
+      <div v-for="(item, idx) in items" :key="idx" class="news-item">
+        <div class="news-title">
           <a
             v-if="item.url"
             :href="item.url"
@@ -28,10 +28,10 @@ defineProps<{ items: NewsItem[] }>()
           </a>
           <span v-else>{{ item.title }}</span>
         </div>
-        <div v-if="item.summary" style="opacity:.75;font-size:13px;">
+        <div v-if="item.summary" class="ui-muted" style="font-size:12px;">
           {{ item.summary }}
         </div>
-        <div v-if="item.date" style="opacity:.6;font-size:12px;">
+        <div v-if="item.date" class="ui-muted" style="font-size:11px;">
           {{ item.date }}
         </div>
       </div>

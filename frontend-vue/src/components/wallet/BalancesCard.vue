@@ -38,18 +38,19 @@ const props = defineProps<{
   <Card title="Balances">
     <div v-if="loading">loading…</div>
 
-    <div v-else style="display:flex;flex-direction:column;gap:8px;">
-      <div>
-        MeBTC:
-        <b>{{ formatUnits(mebtc, mebtcDecimals) }} {{ TOKENS.mebtc.symbol }}</b>
+    <div v-else class="ui-stack">
+      <div class="stat-list">
+        <div class="stat-row">
+          <span class="stat-label">MeBTC</span>
+          <span class="stat-value">{{ formatUnits(mebtc, mebtcDecimals) }} {{ TOKENS.mebtc.symbol }}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">{{ payTokenSymbol }}</span>
+          <span class="stat-value">{{ formatUnits(payToken, payTokenDecimals) }} {{ payTokenSymbol }}</span>
+        </div>
       </div>
 
       <div>
-        {{ payTokenSymbol }}:
-        <b>{{ formatUnits(payToken, payTokenDecimals) }} {{ payTokenSymbol }}</b>
-      </div>
-
-      <div style="margin-top:6px;">
         <AllowancesDropdown
           :disabled="disabled"
           :loading="allowancesLoading"
@@ -71,8 +72,8 @@ const props = defineProps<{
         />
       </div>
 
-      <div style="margin-top:10px;border-top:1px solid #ddd;padding-top:10px;">
-        <div style="font-weight:600;margin-bottom:8px;">owned miners</div>
+      <div class="ui-section">
+        <div class="ui-subtitle">Owned miners</div>
         <OwnedMinersList :disabled="disabled" :owned="owned" layout="grid-sm" />
       </div>
     </div>

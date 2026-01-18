@@ -42,6 +42,16 @@ export function useMiningStats(firstMinerId: bigint = 1n) {
     return Math.floor(delta / 600)
   })
 
+  const nextSlotInSeconds = computed<number | null>(() => {
+    if (!firstMinerCreatedAt.value) return null
+    const created = Number(firstMinerCreatedAt.value)
+    if (!Number.isFinite(created) || created <= 0) return null
+    const delta = nowTs.value - created
+    if (delta < 0) return null
+    const mod = delta % 600
+    return mod === 0 ? 600 : 600 - mod
+  })
+
   watchEffect(async () => {
     refreshKey.value
     loading.value = true
@@ -74,6 +84,7 @@ export function useMiningStats(firstMinerId: bigint = 1n) {
     soldMiners,
     firstMinerCreatedAt,
     intervalsSinceFirst,
+    nextSlotInSeconds,
     loading,
     error
   }

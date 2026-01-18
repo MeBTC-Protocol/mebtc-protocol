@@ -131,10 +131,10 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
     <div v-else-if="modelErr">error loading models: {{ modelErr }}</div>
 
     <div v-else>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <div class="ui-row">
         <label>
           model:
-          <select v-model.number="selectedModelId">
+          <select v-model.number="selectedModelId" class="ui-select">
             <option v-for="m in models" :key="m.modelId" :value="m.modelId">
               {{ m.modelId }} ({{ m.finalized ? 'live' : 'not live' }})
             </option>
@@ -143,10 +143,10 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
 
         <label>
           qty:
-          <input v-model.number="qty" type="number" min="1" style="width:80px;" />
+          <input v-model.number="qty" type="number" min="1" class="ui-input" style="width:80px;" />
         </label>
 
-        <div style="opacity:.8;">
+        <div class="ui-muted">
           price:
           <b>{{ fmt(neededForBuy) }} {{ payTokenSymbol }}</b>
         </div>
@@ -159,7 +159,7 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
         </Button>
       </div>
 
-      <div v-if="selectedModel" style="margin-top:10px;opacity:.85;">
+      <div v-if="selectedModel" class="ui-muted" style="margin-top:10px;">
         <div>
           hashrate: {{ selectedModel.baseHashrate }} | power: {{ selectedModel.basePowerWatt }}W
         </div>
@@ -179,18 +179,19 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
         </div>
       </div>
 
-      <div style="margin-top:12px;">
-        <div style="font-weight:600;margin-bottom:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <span>upgrade miner</span>
-          <span style="font-size:12px;font-weight:400;opacity:.7;">
+      <div class="ui-section">
+        <div class="ui-row ui-subtitle">
+          <span>Upgrade miner</span>
+          <span class="ui-muted" style="font-size:11px;">
             (upgrades erst nach erfolgtem claim aktiv)
           </span>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div class="ui-row">
           <input
             v-model="upgradeTokenId"
             type="text"
             placeholder="tokenId"
+            class="ui-input"
             style="width:120px;"
           />
           <Button
@@ -242,25 +243,25 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
             upgrade hash
           </Button>
         </div>
-        <div v-if="upgradeTokenId" style="margin-top:6px;font-size:12px;opacity:.75;">
+        <div v-if="upgradeTokenId" class="ui-muted" style="margin-top:6px;font-size:12px;">
           <span v-if="upgradeState.status === 'loading'">loading upgrade status…</span>
           <span v-else-if="upgradeState.status === 'error'">upgrade status error: {{ upgradeState.error }}</span>
           <span v-else-if="upgradeState.status === 'ok'">
             model: {{ upgradeState.modelId }} | {{ upgradeStepsText }}
           </span>
         </div>
-        <div v-if="upgradeState.status === 'ok' && upgradeNextCostText" style="margin-top:4px;font-size:12px;opacity:.75;">
+        <div v-if="upgradeState.status === 'ok' && upgradeNextCostText" class="ui-muted" style="margin-top:4px;font-size:12px;">
           {{ upgradeNextCostText }}
         </div>
-        <div v-if="owned.length" style="margin-top:6px;font-size:12px;opacity:.75;">
+        <div v-if="owned.length" class="ui-muted" style="margin-top:6px;font-size:12px;">
           owned tokenIds: {{ owned.map(x => x.toString()).join(', ') }}
         </div>
       </div>
 
       <div v-if="approveError" style="margin-top:10px;">approve error: {{ approveError }}</div>
-      <div v-if="approveLastTx" style="margin-top:10px;opacity:.8;">approve tx: {{ approveLastTx }}</div>
+      <div v-if="approveLastTx" class="ui-muted" style="margin-top:10px;">approve tx: {{ approveLastTx }}</div>
       <div v-if="actionError" style="margin-top:10px;">action error: {{ actionError }}</div>
-      <div v-if="actionLastTx" style="margin-top:10px;opacity:.8;">action tx: {{ actionLastTx }}</div>
+      <div v-if="actionLastTx" class="ui-muted" style="margin-top:10px;">action tx: {{ actionLastTx }}</div>
     </div>
   </Card>
 </template>

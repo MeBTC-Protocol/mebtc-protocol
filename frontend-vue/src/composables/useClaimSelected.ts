@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useWallet } from './useWallet'
 import { claimMinerBatch } from '../services/minerClaimService'
 import { useGlobalRefresh } from './useGlobalRefresh'
@@ -16,17 +16,24 @@ export function useClaimSelected(params: {
   const lastTx = ref('')
   const lastApproveTx = ref('')
 
-  function initSelection() {
+  function syncSelection(ids: bigint[]) {
     const next: Record<string, boolean> = {}
-    for (const id of params.owned()) {
+    for (const id of ids) {
       const k = id.toString()
       next[k] = selected.value[k] ?? true
     }
     selected.value = next
   }
 
+  watch(
+    () => params.owned().map(id => id.toString()),
+    () => {
+      syncSelection(params.owned())
+    },
+    { immediate: true }
+  )
+
   const selectedIds = computed(() => {
-    initSelection()
     return params.owned().filter(id => selected.value[id.toString()])
   })
 
@@ -49,20 +56,19 @@ export function useClaimSelected(params: {
     if (!w.onChain.value) return error.value = 'falsches netzwerk'
     if (!w.address.value) return error.value = 'keine adresse'
 
-    const provider = w.readProvider.value
-    const signer = await w.getSigner()
-
     const missing = selectedIds.value.filter(id => !params.previewMap().has(id.toString()))
     if (missing.length > 0) {
       error.value = `previews fehlen für: ${missing.join(', ')}`
       return
     }
-    // ... nach owner-check und missing-preview-check:
 
     if (!w.hasWalletProvider.value) {
       error.value = "wallet provider fehlt. wallet neu verbinden (disconnect/connect) oder seite reload."
       return
     }
+
+    const provider = w.readProvider.value
+    const signer = await w.getSigner()
 
     busy.value = true
     try {
@@ -94,5 +100,4 @@ export function useClaimSelected(params: {
     claim
   }
 }
-
 

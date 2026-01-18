@@ -13,6 +13,7 @@ const ERC20_ABI = [
 export function useBalances() {
   const { address, readProvider } = useWallet()
   const { refreshKey } = useGlobalRefresh()
+  let requestId = 0
 
   const mebtc = ref<bigint>(0n)
   const payToken = ref<bigint>(0n)
@@ -22,6 +23,7 @@ export function useBalances() {
   const { symbol: payTokenSymbol, decimals: payTokenDecimals, address: payTokenAddress } = usePayToken()
 
   watchEffect(async () => {
+    const rid = ++requestId
     refreshKey.value
     const a = address.value
     if (!a) {
@@ -38,10 +40,17 @@ export function useBalances() {
       const token = payTokenAddress.value || (await fetchPayTokenAddress(p))
       const payTokenC = new Contract(token, ERC20_ABI, p)
 
-      mebtc.value = (await mebtcC.balanceOf(a)) as bigint
-      payToken.value = (await payTokenC.balanceOf(a)) as bigint
+      const [mebtcRes, payRes] = await Promise.all([
+        mebtcC.balanceOf(a),
+        payTokenC.balanceOf(a)
+      ])
+      if (rid !== requestId) return
+      mebtc.value = mebtcRes as bigint
+      payToken.value = payRes as bigint
     } finally {
-      loading.value = false
+      if (rid === requestId) {
+        loading.value = false
+      }
     }
   })
 

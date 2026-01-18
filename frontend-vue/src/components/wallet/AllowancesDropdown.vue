@@ -32,12 +32,13 @@ function needsApprove(minerMissing: bigint, managerMissing: bigint) {
 </script>
 
 <template>
-  <details style="border:1px solid #999;border-radius:10px;padding:6px 8px;">
-    <summary style="cursor:pointer;list-style:none;font-size:12px;display:flex;align-items:center;gap:8px;">
+  <details class="ui-dropdown" style="width:fit-content;">
+    <summary>
       <span>{{ payTokenSymbol }} Allowances</span>
       <span
         v-if="needsApprove(approveExactMissing, approveManagerExactMissing)"
-        style="font-size:10px;padding:2px 6px;border-radius:999px;border:1px solid #b00;color:#b00;"
+        class="ui-badge"
+        style="border-color:#b00;color:#b00;"
       >
         Approve nötig
       </span>
@@ -47,7 +48,7 @@ function needsApprove(minerMissing: bigint, managerMissing: bigint) {
       <div v-else>
         <div>allowance minerNFT (buy/upgrade): {{ minerText }}</div>
         <div>allowance manager (claim fee): {{ managerText }}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <div class="ui-row" style="margin-top:8px;">
           <Button
             :disabled="disabled || busy || approveExactMissing === 0n"
             @click="onApproveExact(approveExactValue)"
@@ -78,7 +79,7 @@ function needsApprove(minerMissing: bigint, managerMissing: bigint) {
           </Button>
         </div>
         <div v-if="error" style="margin-top:8px;">approve error: {{ error }}</div>
-        <div v-if="lastTx" style="margin-top:6px;opacity:.8;">approve tx: {{ lastTx }}</div>
+        <div v-if="lastTx" class="ui-muted" style="margin-top:6px;">approve tx: {{ lastTx }}</div>
       </div>
     </div>
   </details>

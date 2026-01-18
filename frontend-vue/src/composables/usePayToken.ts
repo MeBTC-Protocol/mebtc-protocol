@@ -5,6 +5,7 @@ import { ADDRESSES, TOKENS } from '../contracts/addresses'
 
 export function usePayToken() {
   const { readProvider } = useWallet()
+  let requestId = 0
 
   const address = ref<string>(ADDRESSES.usdc)
   const symbol = ref<string>(TOKENS.usdc.symbol)
@@ -13,17 +14,25 @@ export function usePayToken() {
   const error = ref<string>('')
 
   watchEffect(async () => {
+    const rid = ++requestId
     loading.value = true
-    error.value = ''
+    if (rid === requestId) {
+      error.value = ''
+    }
     try {
       const meta = await fetchPayTokenMeta(readProvider.value)
+      if (rid !== requestId) return
       address.value = meta.address
       symbol.value = meta.symbol
       decimals.value = meta.decimals
     } catch (e: any) {
-      error.value = e?.message ?? String(e)
+      if (rid === requestId) {
+        error.value = e?.message ?? String(e)
+      }
     } finally {
-      loading.value = false
+      if (rid === requestId) {
+        loading.value = false
+      }
     }
   })
 

@@ -64,6 +64,10 @@ contract MiningManager is ReentrancyGuard, Ownable {
     mapping(uint256 => uint256) public debtUSDC;
     mapping(uint256 => uint256) public lastClaimedBlockIndex;
     mapping(uint256 => uint256) public currentEffHash;
+    mapping(uint256 => uint256) public activationTime;
+    mapping(uint256 => uint256) public pendingEffHash;
+    mapping(uint256 => uint256) public pendingHashByTime;
+    mapping(uint256 => uint256[]) private pendingTokensByTime;
 
     event Updated(uint256 slots, uint256 minted, uint256 acc);
     event RewardsClaimed(address indexed user, uint256 reward, uint256 fee);
@@ -116,8 +120,10 @@ contract MiningManager is ReentrancyGuard, Ownable {
         (uint256 effHash,,) = minerNFT.getMinerData(tokenId);
 
         if (from != address(0)) {
-            _settle(tokenId);
-            if (totalEffectiveHash >= effHash) totalEffectiveHash -= effHash;
+            if (activationTime[tokenId] == 0) {
+                _settle(tokenId);
+                if (totalEffectiveHash >= effHash) totalEffectiveHash -= effHash;
+            }
         }
 
         if (to != address(0)) {
@@ -125,14 +131,40 @@ contract MiningManager is ReentrancyGuard, Ownable {
                 // start emission clock when first miner becomes active
                 lastUpdate = block.timestamp;
             }
-            lastAccPerHash[tokenId] = accRewardPerEffHash;
-            lastSettleTime[tokenId] = block.timestamp;
             if (from == address(0)) {
+                uint256 actTime = lastUpdate + CLAIM_INTERVAL;
+                activationTime[tokenId] = actTime;
+                pendingEffHash[tokenId] = effHash;
+                pendingHashByTime[actTime] += effHash;
+                pendingTokensByTime[actTime].push(tokenId);
+                lastAccPerHash[tokenId] = accRewardPerEffHash;
+                lastSettleTime[tokenId] = 0;
                 lastClaimedBlockIndex[tokenId] = blockIndex;
+            } else {
+                if (activationTime[tokenId] == 0) {
+                    lastAccPerHash[tokenId] = accRewardPerEffHash;
+                    lastSettleTime[tokenId] = block.timestamp;
+                    totalEffectiveHash += effHash;
+                    currentEffHash[tokenId] = effHash;
+                }
             }
-            totalEffectiveHash += effHash;
         }
-        currentEffHash[tokenId] = (to == address(0)) ? 0 : effHash;
+        if (to == address(0)) {
+            uint256 act = activationTime[tokenId];
+            if (act != 0) {
+                uint256 pending = pendingEffHash[tokenId];
+                if (pending > 0) {
+                    if (pendingHashByTime[act] >= pending) {
+                        pendingHashByTime[act] -= pending;
+                    } else {
+                        pendingHashByTime[act] = 0;
+                    }
+                }
+                pendingEffHash[tokenId] = 0;
+                activationTime[tokenId] = 0;
+            }
+            currentEffHash[tokenId] = 0;
+        }
 
         emit MinerMoved(from, to, tokenId, effHash);
     }
@@ -165,7 +197,10 @@ contract MiningManager is ReentrancyGuard, Ownable {
         uint256 expectedHash;
         if (owner != address(0)) {
             (uint256 effHash,,) = minerNFT.getMinerData(tokenId);
-            expectedHash = effHash;
+            uint256 actTime = activationTime[tokenId];
+            if (actTime == 0 || block.timestamp >= actTime) {
+                expectedHash = effHash;
+            }
         }
 
         uint256 current = currentEffHash[tokenId];
@@ -239,6 +274,10 @@ contract MiningManager is ReentrancyGuard, Ownable {
     }
 
     function preview(uint256 id, address owner) external view returns (uint256 r, uint256 f) {
+        uint256 actTime = activationTime[id];
+        if (actTime != 0 && block.timestamp < actTime) {
+            return (pendingReward[id], debtUSDC[id]);
+        }
         (uint256 areh,,,) = _simulateUpdate();
 
         uint256 delta = areh - lastAccPerHash[id];
@@ -247,7 +286,13 @@ contract MiningManager is ReentrancyGuard, Ownable {
         r = pendingReward[id] + (effHash * delta) / 1e12;
 
         uint256 last = lastSettleTime[id];
-        if (last == 0) last = block.timestamp;
+        if (last == 0) {
+            if (actTime != 0 && block.timestamp >= actTime) {
+                last = actTime;
+            } else {
+                last = block.timestamp;
+            }
+        }
 
         uint256 intervals = (block.timestamp - last) / CLAIM_INTERVAL;
         if (intervals > 0) {
@@ -264,7 +309,35 @@ contract MiningManager is ReentrancyGuard, Ownable {
         return (powerWatt * CLAIM_INTERVAL * FEE_PER_KWH) / KWH_DENOM;
     }
 
+    function _activateAtTime(uint256 actTime) internal {
+        uint256 added = pendingHashByTime[actTime];
+        if (added == 0) return;
+
+        totalEffectiveHash += added;
+        pendingHashByTime[actTime] = 0;
+
+        uint256[] storage ids = pendingTokensByTime[actTime];
+        for (uint256 i; i < ids.length; i++) {
+            uint256 id = ids[i];
+            if (activationTime[id] != actTime) continue;
+            uint256 effHash = pendingEffHash[id];
+            if (effHash == 0) {
+                activationTime[id] = 0;
+                continue;
+            }
+            lastAccPerHash[id] = accRewardPerEffHash;
+            lastSettleTime[id] = actTime;
+            currentEffHash[id] = effHash;
+            activationTime[id] = 0;
+            pendingEffHash[id] = 0;
+        }
+
+        delete pendingTokensByTime[actTime];
+    }
+
     function _settle(uint256 id) internal {
+        uint256 actTime = activationTime[id];
+        if (actTime != 0 && block.timestamp < actTime) return;
         uint256 delta = accRewardPerEffHash - lastAccPerHash[id];
         if (delta > 0) {
             (uint256 effHash,,) = minerNFT.getMinerData(id);
@@ -273,7 +346,14 @@ contract MiningManager is ReentrancyGuard, Ownable {
         }
 
         uint256 last = lastSettleTime[id];
-        if (last == 0) last = block.timestamp;
+        if (last == 0) {
+            uint256 activeAt = activationTime[id];
+            if (activeAt != 0 && block.timestamp >= activeAt) {
+                last = activeAt;
+            } else {
+                last = block.timestamp;
+            }
+        }
 
         uint256 intervals = (block.timestamp - last) / CLAIM_INTERVAL;
         if (intervals > 0) {
@@ -285,36 +365,35 @@ contract MiningManager is ReentrancyGuard, Ownable {
     }
 
     function _update() internal {
-        if (totalEffectiveHash == 0) return;
         uint256 ts = block.timestamp;
+
+        if (totalEffectiveHash == 0) {
+            if (ts < lastUpdate + CLAIM_INTERVAL) return;
+            lastUpdate += CLAIM_INTERVAL;
+            _activateAtTime(lastUpdate);
+            if (totalEffectiveHash == 0) return;
+        }
+
         if (ts < lastUpdate + CLAIM_INTERVAL) return;
 
-        uint256 intervals = (ts - lastUpdate) / CLAIM_INTERVAL;
-
         uint256 minted;
-        uint256 li = blockIndex;
+        uint256 intervals;
         uint256 rw = currentReward;
-        uint256 rem = intervals;
 
-        while (rem > 0 && rw > 0) {
-            uint256 toHalving = HALVING_BLOCKS - (li % HALVING_BLOCKS);
-            uint256 step = rem < toHalving ? rem : toHalving;
-
-            minted += step * rw;
-            li += step;
-            rem -= step;
-
-            if (li % HALVING_BLOCKS == 0) rw = rw / 2;
+        while (ts >= lastUpdate + CLAIM_INTERVAL) {
+            minted += rw;
+            accRewardPerEffHash += (rw * 1e12) / totalEffectiveHash;
+            lastUpdate += CLAIM_INTERVAL;
+            blockIndex += 1;
+            intervals += 1;
+            if (blockIndex % HALVING_BLOCKS == 0) {
+                rw = rw / 2;
+            }
+            _activateAtTime(lastUpdate);
+            if (totalEffectiveHash == 0) break;
         }
 
-        blockIndex = li;
         currentReward = rw;
-        lastUpdate += intervals * CLAIM_INTERVAL;
-
-        if (minted > 0 && totalEffectiveHash > 0) {
-            accRewardPerEffHash += (minted * 1e12) / totalEffectiveHash;
-        }
-
         emit Updated(intervals, minted, accRewardPerEffHash);
     }
 
@@ -323,37 +402,45 @@ contract MiningManager is ReentrancyGuard, Ownable {
         view
         returns (uint256 areh, uint256 li, uint256 rw, uint256 last)
     {
-        if (totalEffectiveHash == 0) {
-            return (accRewardPerEffHash, blockIndex, currentReward, lastUpdate);
-        }
         uint256 ts = block.timestamp;
-        if (ts < lastUpdate + CLAIM_INTERVAL) {
-            return (accRewardPerEffHash, blockIndex, currentReward, lastUpdate);
-        }
-
-        uint256 intervals = (ts - lastUpdate) / CLAIM_INTERVAL;
-
-        uint256 minted;
+        uint256 _lastUpdate = lastUpdate;
         uint256 _li = blockIndex;
         uint256 _rw = currentReward;
-        uint256 rem = intervals;
-
-        while (rem > 0 && _rw > 0) {
-            uint256 toHalving = HALVING_BLOCKS - (_li % HALVING_BLOCKS);
-            uint256 step = rem < toHalving ? rem : toHalving;
-
-            minted += step * _rw;
-            _li += step;
-            rem -= step;
-
-            if (_li % HALVING_BLOCKS == 0) _rw = _rw / 2;
-        }
-
+        uint256 _total = totalEffectiveHash;
         uint256 _areh = accRewardPerEffHash;
-        if (minted > 0 && totalEffectiveHash > 0) {
-            _areh += (minted * 1e12) / totalEffectiveHash;
+        uint256 intervals;
+        uint256 minted;
+
+        if (_total == 0) {
+            if (ts < _lastUpdate + CLAIM_INTERVAL) {
+                return (_areh, _li, _rw, _lastUpdate);
+            }
+            _lastUpdate += CLAIM_INTERVAL;
+            uint256 pending = pendingHashByTime[_lastUpdate];
+            if (pending > 0) {
+                _total += pending;
+            }
+            if (_total == 0) {
+                return (_areh, _li, _rw, _lastUpdate);
+            }
         }
 
-        return (_areh, _li, _rw, lastUpdate + intervals * CLAIM_INTERVAL);
+        while (ts >= _lastUpdate + CLAIM_INTERVAL) {
+            minted += _rw;
+            _areh += (_rw * 1e12) / _total;
+            _lastUpdate += CLAIM_INTERVAL;
+            _li += 1;
+            intervals += 1;
+            if (_li % HALVING_BLOCKS == 0) {
+                _rw = _rw / 2;
+            }
+            uint256 pending = pendingHashByTime[_lastUpdate];
+            if (pending > 0) {
+                _total += pending;
+            }
+            if (_total == 0) break;
+        }
+
+        return (_areh, _li, _rw, _lastUpdate);
     }
 }

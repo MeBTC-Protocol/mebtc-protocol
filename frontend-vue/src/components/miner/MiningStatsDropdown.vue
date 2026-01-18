@@ -8,6 +8,7 @@ defineProps<{
   mebtcDecimals: number
   firstMinerCreatedAt: bigint | null
   blockTime: number | null
+  nextSlotInSeconds: number | null
   loading: boolean
   error: string
 }>()
@@ -28,13 +29,21 @@ function formatWhole(amount: bigint, decimals: number) {
   const i = s.indexOf('.')
   return i === -1 ? s : s.slice(0, i)
 }
+
+function formatRemaining(seconds: number | null) {
+  if (seconds === null) return '-'
+  if (!Number.isFinite(seconds) || seconds < 0) return '-'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}m ${secs.toString().padStart(2, '0')}s`
+}
 </script>
 
 <template>
   <div style="min-width:220px;">
-    <details style="border:1px solid #999;border-radius:10px;padding:6px 8px;background:#f7f7f7;box-shadow:0 2px 4px rgba(0,0,0,0.08);">
-      <summary style="cursor:pointer;list-style:none;font-size:12px;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:#fff;border:1px solid #ddd;">
-        <span style="display:inline-flex;align-items:center;gap:6px;">
+    <details class="ui-dropdown">
+      <summary>
+        <span class="ui-row">
           <svg
             viewBox="0 0 24 24"
             width="14"
@@ -56,13 +65,14 @@ function formatWhole(amount: bigint, decimals: number) {
       </summary>
       <div style="margin-top:8px;">
         <div v-if="loading" style="font-size:11px;">loading…</div>
-        <div v-else style="display:grid;gap:4px;font-size:10px;line-height:1.1;">
+        <div v-else class="ui-meta">
           <div>Start Miner #1: {{ formatTs(firstMinerCreatedAt) }}</div>
           <div>
             Rewards gesamt:
             <b>{{ formatWhole(totalMined, mebtcDecimals) }} {{ TOKENS.mebtc.symbol }}</b>
           </div>
           <div>Blockzeit: {{ blockTime === null ? '-' : blockTime }}</div>
+          <div>Nächster Block in: {{ formatRemaining(nextSlotInSeconds) }}</div>
           <div>Miner aktiv: {{ soldMiners.toString() }}</div>
           <div>Miner verkauft: {{ soldMiners.toString() }}</div>
           <div v-if="error" style="color:#b00;">error: {{ error }}</div>

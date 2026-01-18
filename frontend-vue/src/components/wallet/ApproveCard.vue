@@ -14,7 +14,7 @@ defineProps<{
 
 <template>
   <Card title="approve usdc">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <div class="ui-row">
       <Button :disabled="disabled || busy" @click="onApproveMiner">
         approve für MinerNFT (max)
       </Button>
@@ -23,7 +23,7 @@ defineProps<{
       </Button>
     </div>
 
-    <div v-if="error" style="margin-top:10px;opacity:.9;">error: {{ error }}</div>
-    <div v-if="lastTx" style="margin-top:10px;opacity:.8;">tx: {{ lastTx }}</div>
+    <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
+    <div v-if="lastTx" class="ui-muted" style="margin-top:10px;">tx: {{ lastTx }}</div>
   </Card>
 </template>

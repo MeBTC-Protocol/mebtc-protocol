@@ -29,7 +29,7 @@ function toggle(id: bigint, checked: boolean) {
 
 <template>
   <Card title="Claim">
-    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+    <div class="ui-row">
       <Button
         :disabled="disabled || busy"
         @click="() => onClaim().catch(() => {})"
@@ -37,58 +37,60 @@ function toggle(id: bigint, checked: boolean) {
         Claim selected
       </Button>
 
-      <div style="opacity:.8;">
+      <div class="ui-muted">
         fee selected: {{ formatUnits(totalFeeSelected, payTokenDecimals) }} {{ payTokenSymbol }}
       </div>
 
-      <div style="opacity:.8;">
+      <div class="ui-muted">
         allowance manager: {{ allowanceManagerText }} {{ payTokenSymbol }}
       </div>
     </div>
 
     <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
 
-    <div v-if="lastApproveTx" style="margin-top:10px;opacity:.8;">
+    <div v-if="lastApproveTx" class="ui-muted" style="margin-top:10px;">
       approve tx: {{ lastApproveTx }}
     </div>
 
-    <div v-if="lastTx" style="margin-top:10px;opacity:.8;">
+    <div v-if="lastTx" class="ui-muted" style="margin-top:10px;">
       claim tx: {{ lastTx }}
     </div>
 
-    <table style="width:100%;border-collapse:collapse;margin-top:12px;">
-      <thead>
-        <tr>
-          <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">select</th>
-          <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">tokenId</th>
-          <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">reward</th>
-          <th style="text-align:left;border-bottom:1px solid #999;padding:8px 6px;opacity:.8;">fee</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="id in owned" :key="id.toString()">
-          <td style="border-bottom:1px solid #ddd;padding:8px 6px;">
-            <input
-              type="checkbox"
-              :checked="!!selected[id.toString()]"
-              @change="toggle(id, ($event.target as HTMLInputElement).checked)"
-            />
-          </td>
-          <td style="border-bottom:1px solid #ddd;padding:8px 6px;">#{{ id.toString() }}</td>
-          <td style="border-bottom:1px solid #ddd;padding:8px 6px;">
-            <span v-if="previewMap.get(id.toString())">
-              {{ formatUnits(previewMap.get(id.toString())!.reward, TOKENS.mebtc.decimals) }}
-            </span>
-            <span v-else>-</span>
-          </td>
-          <td style="border-bottom:1px solid #ddd;padding:8px 6px;">
-            <span v-if="previewMap.get(id.toString())">
-              {{ formatUnits(previewMap.get(id.toString())!.fee, payTokenDecimals) }}
-            </span>
-            <span v-else>-</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="ui-section">
+      <table class="ui-table">
+        <thead>
+          <tr>
+            <th>select</th>
+            <th>tokenId</th>
+            <th>reward</th>
+            <th>fee</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="id in owned" :key="id.toString()">
+            <td>
+              <input
+                type="checkbox"
+                :checked="!!selected[id.toString()]"
+                @change="toggle(id, ($event.target as HTMLInputElement).checked)"
+              />
+            </td>
+            <td>#{{ id.toString() }}</td>
+            <td>
+              <span v-if="previewMap.get(id.toString())">
+                {{ formatUnits(previewMap.get(id.toString())!.reward, TOKENS.mebtc.decimals) }}
+              </span>
+              <span v-else>-</span>
+            </td>
+            <td>
+              <span v-if="previewMap.get(id.toString())">
+                {{ formatUnits(previewMap.get(id.toString())!.fee, payTokenDecimals) }}
+              </span>
+              <span v-else>-</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </Card>
 </template>

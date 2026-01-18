@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Header from './components/layout/Header.vue'
+import ThemeToggle from './components/common/ThemeToggle.vue'
 import WalletCard from './components/wallet/WalletCard.vue'
 import BalancesCard from './components/wallet/BalancesCard.vue'
 import MinerScannerCard from './components/miner/MinerScannerCard.vue'
@@ -33,6 +34,7 @@ const {
   soldMiners,
   firstMinerCreatedAt,
   intervalsSinceFirst,
+  nextSlotInSeconds,
   loading: miningStatsLoading,
   error: miningStatsError
 } = useMiningStats(1n)
@@ -121,116 +123,127 @@ function setApproveStats(payload: { missing: bigint; endValue: bigint }) {
 </script>
 
 <template>
-  <div style="max-width:1150px;margin:0 auto;padding:16px;font-family:ui-sans-serif,system-ui;">
-    <Header
-      title="MeBTC Dashboard"
-      :subtitle="`MinerNFT: ${ADDRESSES.minerNft}\nManager: ${ADDRESSES.miningManager}`"
-      :iconUrl="ME_BTC_ICON_URL"
-    >
-      <template #right>
-        <div style="min-width:220px;">
-          <MinerScannerCard
-            :disabled="!isConnected || !onChain"
-            :busy="scanBusy"
-            :msg="scanMsg"
-            :error="scanError"
-            :owned="owned"
-            :onScan="rescan"
-            compact
-          />
+  <div class="app-root">
+    <div class="app-shell">
+      <aside class="app-aside">
+        <div class="app-aside-inner">
+          <NewsCard :items="newsItems" />
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;">
-          <WalletCard :connected="isConnected" :address="address" :chainId="chainId" :onChain="onChain" />
-          <MiningStatsDropdown
-            :totalMined="totalMined"
-            :soldMiners="soldMiners"
+      </aside>
+
+      <main class="app-main">
+        <Header
+          title="MeBTC Dashboard"
+          :meta="[
+            { label: 'MinerNFT', value: ADDRESSES.minerNft },
+            { label: 'Manager', value: ADDRESSES.miningManager }
+          ]"
+          :iconUrl="ME_BTC_ICON_URL"
+        >
+          <template #right>
+            <div class="ui-stack">
+              <ThemeToggle />
+              <div class="control-stack">
+                <div class="ui-stack" style="min-width:220px;">
+                  <MinerScannerCard
+                    :disabled="!isConnected || !onChain"
+                    :busy="scanBusy"
+                    :msg="scanMsg"
+                    :error="scanError"
+                    :owned="owned"
+                    :onScan="rescan"
+                    compact
+                  />
+                  <MiningStatsDropdown
+                    :totalMined="totalMined"
+                    :soldMiners="soldMiners"
+                    :mebtcDecimals="mebtcDecimals"
+                    :firstMinerCreatedAt="firstMinerCreatedAt"
+                    :blockTime="intervalsSinceFirst"
+                    :nextSlotInSeconds="nextSlotInSeconds"
+                    :loading="miningStatsLoading"
+                    :error="miningStatsError"
+                  />
+                </div>
+                <WalletCard :connected="isConnected" :address="address" :chainId="chainId" :onChain="onChain" />
+              </div>
+            </div>
+          </template>
+        </Header>
+
+        <div v-if="!isConnected" class="notice">
+          wallet nicht verbunden (oben rechts verbinden)
+        </div>
+
+        <div v-else-if="!onChain" class="notice">
+          falsches netzwerk. bitte avalanche fuji auswählen
+        </div>
+
+        <div class="section-grid">
+          <BalancesCard
+            class="grid-span-2"
+            :mebtc="mebtc"
+            :payToken="payToken"
+            :loading="balancesLoading"
             :mebtcDecimals="mebtcDecimals"
-            :firstMinerCreatedAt="firstMinerCreatedAt"
-            :blockTime="intervalsSinceFirst"
-            :loading="miningStatsLoading"
-            :error="miningStatsError"
+            :payTokenDecimals="payTokenDecimals"
+            :payTokenSymbol="payTokenSymbol"
+            :disabled="!isConnected || !onChain"
+            :owned="owned"
+            :allowancesLoading="allowancesLoading"
+            :allowancesBusy="approveBusy"
+            :allowanceMinerText="allowanceMinerText()"
+            :allowanceManagerText="allowanceManagerText()"
+            :approveError="approveError"
+            :approveLastTx="approveLastTx"
+            :onApproveMiner="approveMinerMax"
+            :onApproveManager="approveManagerMax"
+            :approveExactMissing="approveExactMissing"
+            :approveExactValue="approveExactValue"
+            :onApproveExact="approveMinerExact"
+            :approveManagerExactMissing="approveManagerExactMissing"
+            :approveManagerExactValue="approveManagerExactValue"
+            :onApproveManagerExact="approveManagerExact"
+          />
+
+          <MinerPricingCard
+            :disabled="!isConnected || !onChain"
+            :allowanceMiner="allowanceMiner"
+            :approveBusy="approveBusy"
+            :approveError="approveError"
+            :approveLastTx="approveLastTx"
+            :actionBusy="actionBusy"
+            :actionError="actionError"
+            :actionLastTx="actionLastTx"
+            :onApproveExact="approveMinerExact"
+            :onBuyModel="buyFromModel"
+            :onUpgradePower="requestUpgradePower"
+            :onUpgradeHash="requestUpgradeHash"
+            :payTokenSymbol="payTokenSymbol"
+            :payTokenDecimals="payTokenDecimals"
+            :owned="owned"
+            @approve-stats="setApproveStats"
+          />
+
+          <ClaimCard
+            class="grid-col-2"
+            :disabled="!isConnected || !onChain"
+            :owned="owned"
+            :previewMap="previewMap"
+            :selected="selected"
+            :setSelected="setSelected"
+            :busy="claimBusy"
+            :error="claimError"
+            :lastTx="claimLastTx"
+            :lastApproveTx="lastApproveTx"
+            :totalFeeSelected="totalFeeSelected"
+            :allowanceManagerText="allowanceManagerText()"
+            :payTokenSymbol="payTokenSymbol"
+            :payTokenDecimals="payTokenDecimals"
+            :onClaim="claim"
           />
         </div>
-      </template>
-    </Header>
-
-    <div v-if="!isConnected" style="margin-top:16px;padding:12px;border:1px solid #999;border-radius:10px;">
-      wallet nicht verbunden (oben rechts verbinden)
-    </div>
-
-    <div v-else-if="!onChain" style="margin-top:16px;padding:12px;border:1px solid #999;border-radius:10px;">
-      falsches netzwerk. bitte avalanche fuji auswählen
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
-      <BalancesCard
-        style="grid-column:1 / span 2;"
-        :mebtc="mebtc"
-        :payToken="payToken"
-        :loading="balancesLoading"
-        :mebtcDecimals="mebtcDecimals"
-        :payTokenDecimals="payTokenDecimals"
-        :payTokenSymbol="payTokenSymbol"
-        :disabled="!isConnected || !onChain"
-        :owned="owned"
-        :allowancesLoading="allowancesLoading"
-        :allowancesBusy="approveBusy"
-        :allowanceMinerText="allowanceMinerText()"
-        :allowanceManagerText="allowanceManagerText()"
-        :approveError="approveError"
-        :approveLastTx="approveLastTx"
-        :onApproveMiner="approveMinerMax"
-        :onApproveManager="approveManagerMax"
-        :approveExactMissing="approveExactMissing"
-        :approveExactValue="approveExactValue"
-        :onApproveExact="approveMinerExact"
-        :approveManagerExactMissing="approveManagerExactMissing"
-        :approveManagerExactValue="approveManagerExactValue"
-        :onApproveManagerExact="approveManagerExact"
-      />
-
-      <MinerPricingCard
-        :disabled="!isConnected || !onChain"
-        :allowanceMiner="allowanceMiner"
-        :approveBusy="approveBusy"
-        :approveError="approveError"
-        :approveLastTx="approveLastTx"
-        :actionBusy="actionBusy"
-        :actionError="actionError"
-        :actionLastTx="actionLastTx"
-        :onApproveExact="approveMinerExact"
-        :onBuyModel="buyFromModel"
-        :onUpgradePower="requestUpgradePower"
-        :onUpgradeHash="requestUpgradeHash"
-        :payTokenSymbol="payTokenSymbol"
-        :payTokenDecimals="payTokenDecimals"
-        :owned="owned"
-        @approve-stats="setApproveStats"
-      />
-
-      <NewsCard
-        style="grid-column:2;max-width:420px;justify-self:end;width:100%;"
-        :items="newsItems"
-      />
-    </div>
-
-    <div style="margin-top:12px;">
-      <ClaimCard
-        :disabled="!isConnected || !onChain"
-        :owned="owned"
-        :previewMap="previewMap"
-        :selected="selected"
-        :setSelected="setSelected"
-        :busy="claimBusy"
-        :error="claimError"
-        :lastTx="claimLastTx"
-        :lastApproveTx="lastApproveTx"
-        :totalFeeSelected="totalFeeSelected"
-        :allowanceManagerText="allowanceManagerText()"
-        :payTokenSymbol="payTokenSymbol"
-        :payTokenDecimals="payTokenDecimals"
-        :onClaim="claim"
-      />
+      </main>
     </div>
   </div>
 </template>
