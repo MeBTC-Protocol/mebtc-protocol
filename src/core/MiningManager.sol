@@ -5,6 +5,7 @@ import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/Reentrancy
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+import {ITwapOracle} from "./ITwapOracle.sol";
 
 /*
     MiningManager (upgrades become active after claim)
@@ -26,13 +27,23 @@ interface IMeBTC {
 interface IMinerNFT {
     function ownerOf(uint256 tokenId) external view returns (address);
 
-    // active effective values
     function getMinerData(uint256 tokenId) external view returns (uint256 effHash, uint256 effPowerWatt, uint256 createdAt);
+    function getMinerConfig(uint256 tokenId)
+        external
+        view
+        returns (uint256 baseHashrate, uint256 basePowerWatt, uint16 hashUpgradeBps, uint16 powerUpgradeBps, uint256 createdAt);
 
     function setLastClaimAt(uint256 tokenId, uint40 ts) external;
 
     // after claim apply pending -> active (may call manager hook for hash change)
     function applyPendingUpgrades(uint256 tokenId) external;
+}
+
+interface IStakeVault {
+    function getStakeInfo(address user)
+        external
+        view
+        returns (uint256 balance, uint8 tier, uint64 unlockAt, uint16 hashBonusBps, uint16 powerBonusBps);
 }
 
 contract MiningManager is ReentrancyGuard, Ownable {
@@ -43,11 +54,16 @@ contract MiningManager is ReentrancyGuard, Ownable {
     uint256 public constant FEE_PER_KWH = 150_000;      // 0.15 USDC (6 dec)
     uint256 private constant KWH_DENOM = 3_600_000;     // 1000*3600
 
-    IERC20  public payToken;
-    address public immutable pool;
+    uint16 public constant MAX_MEBTC_SHARE_BPS = 3000; // 30%
 
-    IMeBTC    public meBTC;
-    IMinerNFT public minerNFT;
+    IERC20 public payToken;
+    address public demandVault;
+    address public feeVaultMeBTC;
+    ITwapOracle public twapOracle;
+
+    IMeBTC      public meBTC;
+    IMinerNFT   public minerNFT;
+    IStakeVault public stakeVault;
 
     address private initializer;
 
@@ -64,16 +80,20 @@ contract MiningManager is ReentrancyGuard, Ownable {
     mapping(uint256 => uint256) public debtUSDC;
     mapping(uint256 => uint256) public lastClaimedBlockIndex;
     mapping(uint256 => uint256) public currentEffHash;
+    mapping(uint256 => uint256) public currentEffPower;
     mapping(uint256 => uint256) public activationTime;
     mapping(uint256 => uint256) public pendingEffHash;
+    mapping(uint256 => uint256) public pendingEffPower;
     mapping(uint256 => uint256) public pendingHashByTime;
     mapping(uint256 => uint256[]) private pendingTokensByTime;
+    mapping(address => uint256[]) private ownerTokens;
+    mapping(uint256 => uint256) private ownerTokenIndex;
 
     event Updated(uint256 slots, uint256 minted, uint256 acc);
     event RewardsClaimed(address indexed user, uint256 reward, uint256 fee);
     event MinerMoved(address indexed from, address indexed to, uint256 indexed tokenId, uint256 effHashAdded);
     event MinerUpgraded(address indexed owner, uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
-    event Initialized(address mebtc, address miner);
+    event Initialized(address mebtc, address miner, address stakeVault, address demandVault, address feeVaultMeBTC, address twapOracle);
     event PayTokenUpdated(address indexed oldToken, address indexed newToken);
     event MinerResynced(uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
 
@@ -82,11 +102,10 @@ contract MiningManager is ReentrancyGuard, Ownable {
         _;
     }
 
-    constructor(address _payToken, address _pool) Ownable(msg.sender) {
-        require(_payToken != address(0) && _pool != address(0), "arg=0");
+    constructor(address _payToken) Ownable(msg.sender) {
+        require(_payToken != address(0), "arg=0");
         require(IERC20Metadata(_payToken).decimals() == 6, "decimals");
         payToken = IERC20(_payToken);
-        pool = _pool;
 
         initializer = msg.sender;
         lastUpdate = block.timestamp;
@@ -101,72 +120,192 @@ contract MiningManager is ReentrancyGuard, Ownable {
         emit PayTokenUpdated(oldToken, _payToken);
     }
 
-    function init(address _mebtc, address _miner) external onlyInit {
-        require(address(meBTC) == address(0) && address(minerNFT) == address(0), "inited");
-        require(_mebtc != address(0) && _miner != address(0), "0");
+    function init(
+        address _mebtc,
+        address _miner,
+        address _stakeVault,
+        address _demandVault,
+        address _feeVaultMeBTC,
+        address _twapOracle
+    ) external onlyInit {
+        require(
+            address(meBTC) == address(0) &&
+                address(minerNFT) == address(0) &&
+                address(stakeVault) == address(0) &&
+                demandVault == address(0) &&
+                feeVaultMeBTC == address(0) &&
+                address(twapOracle) == address(0),
+            "inited"
+        );
+        require(
+            _mebtc != address(0) &&
+                _miner != address(0) &&
+                _stakeVault != address(0) &&
+                _demandVault != address(0) &&
+                _feeVaultMeBTC != address(0) &&
+                _twapOracle != address(0),
+            "0"
+        );
 
         meBTC = IMeBTC(_mebtc);
         minerNFT = IMinerNFT(_miner);
+        stakeVault = IStakeVault(_stakeVault);
+
+        demandVault = _demandVault;
+        feeVaultMeBTC = _feeVaultMeBTC;
+        twapOracle = ITwapOracle(_twapOracle);
 
         initializer = address(0);
-        emit Initialized(_mebtc, _miner);
+        emit Initialized(_mebtc, _miner, _stakeVault, _demandVault, _feeVaultMeBTC, _twapOracle);
+    }
+
+    function onStakeChange(address owner) external {
+        require(msg.sender == address(stakeVault), "!stake");
+        _update();
+
+        uint256[] storage ids = ownerTokens[owner];
+        for (uint256 i; i < ids.length; i++) {
+            uint256 id = ids[i];
+            uint256 actTime = activationTime[id];
+            if (actTime != 0) {
+                (uint256 newEffHash, uint256 newEffPower,) = _computeEffForOwner(id, owner);
+                uint256 oldPending = pendingEffHash[id];
+                if (oldPending > 0) {
+                    if (pendingHashByTime[actTime] >= oldPending) {
+                        pendingHashByTime[actTime] -= oldPending;
+                    } else {
+                        pendingHashByTime[actTime] = 0;
+                    }
+                }
+                pendingEffHash[id] = newEffHash;
+                pendingEffPower[id] = newEffPower;
+                pendingHashByTime[actTime] += newEffHash;
+                continue;
+            }
+
+            uint256 oldEffHash = currentEffHash[id];
+            uint256 oldEffPower = currentEffPower[id];
+            _settleWithEff(id, oldEffHash, oldEffPower);
+            lastSettleTime[id] = block.timestamp;
+
+            (uint256 effHash, uint256 effPower,) = _computeEffForOwner(id, owner);
+            if (effHash > oldEffHash) {
+                totalEffectiveHash += (effHash - oldEffHash);
+            } else if (oldEffHash > effHash) {
+                totalEffectiveHash -= (oldEffHash - effHash);
+            }
+
+            currentEffHash[id] = effHash;
+            currentEffPower[id] = effPower;
+        }
+    }
+
+    function _computeEffForOwner(uint256 tokenId, address owner)
+        internal
+        view
+        returns (uint256 effHash, uint256 effPowerWatt, uint256 createdAt)
+    {
+        (uint256 baseHash, uint256 basePower, uint16 hashBps, uint16 powerBps, uint256 created) =
+            minerNFT.getMinerConfig(tokenId);
+
+        uint256 effHashAfter = (baseHash * (10_000 + uint256(hashBps))) / 10_000;
+
+        uint256 pbps = uint256(powerBps);
+        if (pbps > 10_000) pbps = 10_000;
+        uint256 effPowerAfter = (basePower * (10_000 - pbps)) / 10_000;
+
+        (, , , uint16 stakeHashBps, uint16 stakePowerBps) = stakeVault.getStakeInfo(owner);
+
+        uint256 stakeHashBonus = (baseHash * uint256(stakeHashBps)) / 10_000;
+        uint256 stakePowerBonus = (effPowerAfter * uint256(stakePowerBps)) / 10_000;
+
+        effHash = effHashAfter + stakeHashBonus;
+        effPowerWatt = effPowerAfter - stakePowerBonus;
+        createdAt = created;
+    }
+
+    function _addOwnerToken(address owner, uint256 tokenId) internal {
+        ownerTokenIndex[tokenId] = ownerTokens[owner].length;
+        ownerTokens[owner].push(tokenId);
+    }
+
+    function _removeOwnerToken(address owner, uint256 tokenId) internal {
+        uint256 idx = ownerTokenIndex[tokenId];
+        uint256 lastIdx = ownerTokens[owner].length - 1;
+        if (idx != lastIdx) {
+            uint256 lastId = ownerTokens[owner][lastIdx];
+            ownerTokens[owner][idx] = lastId;
+            ownerTokenIndex[lastId] = idx;
+        }
+        ownerTokens[owner].pop();
     }
 
     // called by MinerNFT on mint/transfer
     function onMinerTransfer(address from, address to, uint256 tokenId, uint256 /*baseHashRate*/) external {
         require(msg.sender == address(minerNFT), "!miner");
         _update();
-
-        (uint256 effHash,,) = minerNFT.getMinerData(tokenId);
+        uint256 actTime = activationTime[tokenId];
+        bool wasPending = actTime != 0;
 
         if (from != address(0)) {
-            if (activationTime[tokenId] == 0) {
-                _settle(tokenId);
-                if (totalEffectiveHash >= effHash) totalEffectiveHash -= effHash;
+            _removeOwnerToken(from, tokenId);
+
+            if (!wasPending) {
+                _settleWithEff(tokenId, currentEffHash[tokenId], currentEffPower[tokenId]);
+                if (totalEffectiveHash >= currentEffHash[tokenId]) totalEffectiveHash -= currentEffHash[tokenId];
+            } else {
+                uint256 oldPending = pendingEffHash[tokenId];
+                if (oldPending > 0) {
+                    if (pendingHashByTime[actTime] >= oldPending) {
+                        pendingHashByTime[actTime] -= oldPending;
+                    } else {
+                        pendingHashByTime[actTime] = 0;
+                    }
+                }
             }
+
+            if (to == address(0)) {
+                activationTime[tokenId] = 0;
+                pendingEffHash[tokenId] = 0;
+                pendingEffPower[tokenId] = 0;
+            }
+
+            currentEffHash[tokenId] = 0;
+            currentEffPower[tokenId] = 0;
         }
 
         if (to != address(0)) {
+            _addOwnerToken(to, tokenId);
+            (uint256 effHash, uint256 effPower,) = _computeEffForOwner(tokenId, to);
+
             if (from == address(0) && totalEffectiveHash == 0) {
                 // start emission clock when first miner becomes active
                 lastUpdate = block.timestamp;
             }
             if (from == address(0)) {
-                uint256 actTime = lastUpdate + CLAIM_INTERVAL;
-                activationTime[tokenId] = actTime;
+                uint256 newActTime = lastUpdate + CLAIM_INTERVAL;
+                activationTime[tokenId] = newActTime;
                 pendingEffHash[tokenId] = effHash;
-                pendingHashByTime[actTime] += effHash;
-                pendingTokensByTime[actTime].push(tokenId);
+                pendingEffPower[tokenId] = effPower;
+                pendingHashByTime[newActTime] += effHash;
+                pendingTokensByTime[newActTime].push(tokenId);
                 lastAccPerHash[tokenId] = accRewardPerEffHash;
                 lastSettleTime[tokenId] = 0;
                 lastClaimedBlockIndex[tokenId] = blockIndex;
+            } else if (wasPending) {
+                pendingEffHash[tokenId] = effHash;
+                pendingEffPower[tokenId] = effPower;
+                pendingHashByTime[actTime] += effHash;
             } else {
-                if (activationTime[tokenId] == 0) {
-                    lastAccPerHash[tokenId] = accRewardPerEffHash;
-                    lastSettleTime[tokenId] = block.timestamp;
-                    totalEffectiveHash += effHash;
-                    currentEffHash[tokenId] = effHash;
-                }
+                lastAccPerHash[tokenId] = accRewardPerEffHash;
+                lastSettleTime[tokenId] = block.timestamp;
+                totalEffectiveHash += effHash;
+                currentEffHash[tokenId] = effHash;
+                currentEffPower[tokenId] = effPower;
             }
-        }
-        if (to == address(0)) {
-            uint256 act = activationTime[tokenId];
-            if (act != 0) {
-                uint256 pending = pendingEffHash[tokenId];
-                if (pending > 0) {
-                    if (pendingHashByTime[act] >= pending) {
-                        pendingHashByTime[act] -= pending;
-                    } else {
-                        pendingHashByTime[act] = 0;
-                    }
-                }
-                pendingEffHash[tokenId] = 0;
-                activationTime[tokenId] = 0;
-            }
-            currentEffHash[tokenId] = 0;
         }
 
-        emit MinerMoved(from, to, tokenId, effHash);
+        emit MinerMoved(from, to, tokenId, currentEffHash[tokenId]);
     }
 
     // called by MinerNFT ONLY when pending upgrades are applied (after claim)
@@ -174,16 +313,21 @@ contract MiningManager is ReentrancyGuard, Ownable {
         require(msg.sender == address(minerNFT), "!miner");
         require(owner != address(0), "owner=0");
 
-        // nach claim wurde bereits settled und lastAccPerHash korrekt gesetzt,
-        // jetzt nur totals anpassen
-        if (newEffHash > oldEffHash) {
-            totalEffectiveHash += (newEffHash - oldEffHash);
-        } else if (oldEffHash > newEffHash) {
-            totalEffectiveHash -= (oldEffHash - newEffHash);
+        oldEffHash;
+        newEffHash;
+
+        (uint256 effHash, uint256 effPower,) = _computeEffForOwner(tokenId, owner);
+        uint256 prevEffHash = currentEffHash[tokenId];
+
+        if (effHash > prevEffHash) {
+            totalEffectiveHash += (effHash - prevEffHash);
+        } else if (prevEffHash > effHash) {
+            totalEffectiveHash -= (prevEffHash - effHash);
         }
 
-        currentEffHash[tokenId] = newEffHash;
-        emit MinerUpgraded(owner, tokenId, oldEffHash, newEffHash);
+        currentEffHash[tokenId] = effHash;
+        currentEffPower[tokenId] = effPower;
+        emit MinerUpgraded(owner, tokenId, prevEffHash, effHash);
     }
 
     function resyncMiner(uint256 tokenId) external {
@@ -195,11 +339,13 @@ contract MiningManager is ReentrancyGuard, Ownable {
         }
 
         uint256 expectedHash;
+        uint256 expectedPower;
         if (owner != address(0)) {
-            (uint256 effHash,,) = minerNFT.getMinerData(tokenId);
+            (uint256 effHash, uint256 effPower,) = _computeEffForOwner(tokenId, owner);
             uint256 actTime = activationTime[tokenId];
             if (actTime == 0 || block.timestamp >= actTime) {
                 expectedHash = effHash;
+                expectedPower = effPower;
             }
         }
 
@@ -215,10 +361,19 @@ contract MiningManager is ReentrancyGuard, Ownable {
         }
 
         currentEffHash[tokenId] = expectedHash;
+        currentEffPower[tokenId] = expectedPower;
         emit MinerResynced(tokenId, current, expectedHash);
     }
 
     function claim(uint256[] calldata ids) external nonReentrant {
+        _claim(ids, 0);
+    }
+
+    function claimWithMebtc(uint256[] calldata ids, uint16 mebtcShareBps) external nonReentrant {
+        _claim(ids, mebtcShareBps);
+    }
+
+    function _claim(uint256[] calldata ids, uint16 mebtcShareBps) internal {
         _update();
 
         uint256 outR;
@@ -251,9 +406,8 @@ contract MiningManager is ReentrancyGuard, Ownable {
 
         // 3) collect fee
         if (outF > 0) {
-            require(payToken.allowance(msg.sender, address(this)) >= outF, "allowance");
-            require(payToken.balanceOf(msg.sender) >= outF, "balance");
-            require(payToken.transferFrom(msg.sender, pool, outF), "paytoken");
+            require(mebtcShareBps <= MAX_MEBTC_SHARE_BPS, "mebtc%");
+            _collectFees(msg.sender, outF, mebtcShareBps);
         }
 
         // 4) mint reward
@@ -273,6 +427,36 @@ contract MiningManager is ReentrancyGuard, Ownable {
         emit RewardsClaimed(msg.sender, outR, outF);
     }
 
+    function _collectFees(address payer, uint256 feeUSDC, uint16 mebtcShareBps) internal {
+        if (mebtcShareBps == 0) {
+            require(payToken.allowance(payer, address(this)) >= feeUSDC, "allowance");
+            require(payToken.balanceOf(payer) >= feeUSDC, "balance");
+            require(payToken.transferFrom(payer, demandVault, feeUSDC), "paytoken");
+            return;
+        }
+
+        require(twapOracle.isReady(), "twap");
+        uint256 price = twapOracle.priceMebtcInUsdc();
+        require(price > 0, "price");
+
+        uint256 mebtcUsdc = (feeUSDC * mebtcShareBps) / 10_000;
+        uint256 usdcPart = feeUSDC - mebtcUsdc;
+
+        if (usdcPart > 0) {
+            require(payToken.allowance(payer, address(this)) >= usdcPart, "allowance");
+            require(payToken.balanceOf(payer) >= usdcPart, "balance");
+            require(payToken.transferFrom(payer, demandVault, usdcPart), "paytoken");
+        }
+
+        uint256 mebtcAmount = (mebtcUsdc * 1e18) / price;
+        if (mebtcAmount > 0) {
+            IERC20 mebtcErc20 = IERC20(address(meBTC));
+            require(mebtcErc20.allowance(payer, address(this)) >= mebtcAmount, "mebtc allowance");
+            require(mebtcErc20.balanceOf(payer) >= mebtcAmount, "mebtc balance");
+            require(mebtcErc20.transferFrom(payer, feeVaultMeBTC, mebtcAmount), "mebtc");
+        }
+    }
+
     function preview(uint256 id, address owner) external view returns (uint256 r, uint256 f) {
         uint256 actTime = activationTime[id];
         if (actTime != 0 && block.timestamp < actTime) {
@@ -281,7 +465,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
         (uint256 areh,,,) = _simulateUpdate();
 
         uint256 delta = areh - lastAccPerHash[id];
-        (uint256 effHash, uint256 effPowerWatt,) = minerNFT.getMinerData(id);
+        (uint256 effHash, uint256 effPowerWatt,) = _computeEffForOwner(id, owner);
 
         r = pendingReward[id] + (effHash * delta) / 1e12;
 
@@ -301,8 +485,6 @@ contract MiningManager is ReentrancyGuard, Ownable {
         } else {
             f = debtUSDC[id];
         }
-
-        owner;
     }
 
     function _feeForInterval(uint256 powerWatt) internal pure returns (uint256) {
@@ -321,6 +503,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
             uint256 id = ids[i];
             if (activationTime[id] != actTime) continue;
             uint256 effHash = pendingEffHash[id];
+            uint256 effPower = pendingEffPower[id];
             if (effHash == 0) {
                 activationTime[id] = 0;
                 continue;
@@ -328,8 +511,10 @@ contract MiningManager is ReentrancyGuard, Ownable {
             lastAccPerHash[id] = accRewardPerEffHash;
             lastSettleTime[id] = actTime;
             currentEffHash[id] = effHash;
+            currentEffPower[id] = effPower;
             activationTime[id] = 0;
             pendingEffHash[id] = 0;
+            pendingEffPower[id] = 0;
         }
 
         delete pendingTokensByTime[actTime];
@@ -338,9 +523,12 @@ contract MiningManager is ReentrancyGuard, Ownable {
     function _settle(uint256 id) internal {
         uint256 actTime = activationTime[id];
         if (actTime != 0 && block.timestamp < actTime) return;
+        _settleWithEff(id, currentEffHash[id], currentEffPower[id]);
+    }
+
+    function _settleWithEff(uint256 id, uint256 effHash, uint256 effPowerWatt) internal {
         uint256 delta = accRewardPerEffHash - lastAccPerHash[id];
         if (delta > 0) {
-            (uint256 effHash,,) = minerNFT.getMinerData(id);
             pendingReward[id] += (effHash * delta) / 1e12;
             lastAccPerHash[id] = accRewardPerEffHash;
         }
@@ -357,7 +545,6 @@ contract MiningManager is ReentrancyGuard, Ownable {
 
         uint256 intervals = (block.timestamp - last) / CLAIM_INTERVAL;
         if (intervals > 0) {
-            (, uint256 effPowerWatt,) = minerNFT.getMinerData(id);
             uint256 perIntervalFee = _feeForInterval(effPowerWatt);
             debtUSDC[id] += intervals * perIntervalFee;
             lastSettleTime[id] = last + intervals * CLAIM_INTERVAL;

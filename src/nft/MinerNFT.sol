@@ -8,11 +8,12 @@ import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/exten
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC2981} from "openzeppelin-contracts/contracts/token/common/ERC2981.sol";
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import {ITwapOracle} from "../core/ITwapOracle.sol";
 
 /*
     MinerNFT (Model B)
     - permissionless buyFromModel() gegen USDC (6 decimals)
-    - 95% vom Primärverkauf -> POOL (Treasury / später Uniswap-Seed etc.)
+    - 95% vom Primärverkauf -> DemandVault
       5% -> PROJECT
     - Royalties 100% -> ROYALTY_WALLET (ERC2981)
     - Upgrades:
@@ -42,12 +43,16 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     // Power upgrade: -5% pro step (500 bps)
     uint16 public constant POWER_STEP_BPS = 500;
 
-    uint16 public constant PRIMARY_POOL_BPS = 9500; // 95%
-    uint16 public constant PRIMARY_PROJECT_BPS = 500; // 5%
+    uint16 public constant PRIMARY_POOL_BPS = 9000; // 90%
+    uint16 public constant PRIMARY_PROJECT_BPS = 1000; // 10%
+    uint16 public constant MAX_MEBTC_SHARE_BPS = 3000; // 30%
 
     // --------- config ----------
     IERC20 public payToken;
-    address public immutable poolTreasury;
+    IERC20 public immutable mebtcToken;
+    ITwapOracle public immutable twapOracle;
+    address public immutable demandVault;
+    address public immutable feeVaultMeBTC;
     address public immutable projectWallet;
 
     IMiningManagerHook public manager;
@@ -107,20 +112,29 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     // --------- constructor ----------
     constructor(
         address _payToken,
-        address _poolTreasury,
+        address _demandVault,
+        address _feeVaultMeBTC,
         address _projectWallet,
         address _royaltyWallet,
-        uint96 _royaltyBps
+        uint96 _royaltyBps,
+        address _mebtcToken,
+        address _twapOracle
     ) ERC721("MeBTC Miner", "MBTCMINER") Ownable(msg.sender) {
         require(_payToken != address(0), "token=0");
-        require(_poolTreasury != address(0), "pool=0");
+        require(_demandVault != address(0), "demand=0");
+        require(_feeVaultMeBTC != address(0), "mebtcVault=0");
         require(_projectWallet != address(0), "project=0");
         require(_royaltyWallet != address(0), "royalty=0");
+        require(_mebtcToken != address(0), "mebtc=0");
+        require(_twapOracle != address(0), "twap=0");
         require(_royaltyBps <= 10_000, "royalty>100%");
 
         require(IERC20Metadata(_payToken).decimals() == 6, "decimals");
         payToken = IERC20(_payToken);
-        poolTreasury = _poolTreasury;
+        mebtcToken = IERC20(_mebtcToken);
+        twapOracle = ITwapOracle(_twapOracle);
+        demandVault = _demandVault;
+        feeVaultMeBTC = _feeVaultMeBTC;
         projectWallet = _projectWallet;
 
         _setDefaultRoyalty(_royaltyWallet, _royaltyBps);
@@ -236,6 +250,22 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         return minerState[tokenId];
     }
 
+    function getMinerConfig(uint256 tokenId)
+        external
+        view
+        returns (uint256 baseHashrate, uint256 basePowerWatt, uint16 hashUpgradeBps, uint16 powerUpgradeBps, uint256 createdAt)
+    {
+        MinerState storage s = minerState[tokenId];
+        require(s.modelId != 0, "model!");
+        Model storage m = models[s.modelId];
+
+        baseHashrate = m.baseHashrate;
+        basePowerWatt = m.basePowerWatt;
+        hashUpgradeBps = s.hashUpgradeBps;
+        powerUpgradeBps = s.powerUpgradeBps;
+        createdAt = uint256(s.createdAt);
+    }
+
     // --------- buying ----------
     function buyFromModel(uint16 modelId, uint256 quantity) external nonReentrant returns (uint256 firstTokenId) {
         require(quantity > 0, "qty=0");
@@ -251,7 +281,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         uint256 toProject = total - toPool;
 
         // pull USDC from buyer
-        payToken.safeTransferFrom(msg.sender, poolTreasury, toPool);
+        payToken.safeTransferFrom(msg.sender, demandVault, toPool);
         if (toProject > 0) {
             payToken.safeTransferFrom(msg.sender, projectWallet, toProject);
         }
@@ -284,6 +314,14 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     // --------- upgrades (pending until claim) ----------
     function requestUpgradePower(uint256 tokenId) external nonReentrant returns (uint16 newPendingPowerBps) {
+        return requestUpgradePowerWithMebtc(tokenId, 0);
+    }
+
+    function requestUpgradePowerWithMebtc(uint256 tokenId, uint16 mebtcShareBps)
+        public
+        nonReentrant
+        returns (uint16 newPendingPowerBps)
+    {
         require(ownerOf(tokenId) == msg.sender, "!owner");
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
@@ -299,7 +337,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         uint256 cost = m.powerStepCost[stepIndex];
         require(cost > 0, "cost=0");
 
-        payToken.safeTransferFrom(msg.sender, poolTreasury, cost);
+        _collectUpgradeFee(cost, mebtcShareBps);
 
         s.pendingPowerUpgradeBps += POWER_STEP_BPS;
         newPendingPowerBps = s.pendingPowerUpgradeBps;
@@ -308,6 +346,14 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     }
 
     function requestUpgradeHash(uint256 tokenId) external nonReentrant returns (uint16 newPendingHashBps) {
+        return requestUpgradeHashWithMebtc(tokenId, 0);
+    }
+
+    function requestUpgradeHashWithMebtc(uint256 tokenId, uint16 mebtcShareBps)
+        public
+        nonReentrant
+        returns (uint16 newPendingHashBps)
+    {
         require(ownerOf(tokenId) == msg.sender, "!owner");
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
@@ -323,7 +369,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         uint256 cost = m.hashStepCost[stepIndex];
         require(cost > 0, "cost=0");
 
-        payToken.safeTransferFrom(msg.sender, poolTreasury, cost);
+        _collectUpgradeFee(cost, mebtcShareBps);
 
         s.pendingHashUpgradeBps += HASH_STEP_BPS;
         newPendingHashBps = s.pendingHashUpgradeBps;
@@ -371,6 +417,31 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         }
     }
 
+    function _collectUpgradeFee(uint256 costUSDC, uint16 mebtcShareBps) internal {
+        require(mebtcShareBps <= MAX_MEBTC_SHARE_BPS, "mebtc%");
+
+        if (mebtcShareBps == 0) {
+            payToken.safeTransferFrom(msg.sender, demandVault, costUSDC);
+            return;
+        }
+
+        require(twapOracle.isReady(), "twap");
+        uint256 price = twapOracle.priceMebtcInUsdc();
+        require(price > 0, "price");
+
+        uint256 mebtcUsdc = (costUSDC * mebtcShareBps) / 10_000;
+        uint256 usdcPart = costUSDC - mebtcUsdc;
+
+        if (usdcPart > 0) {
+            payToken.safeTransferFrom(msg.sender, demandVault, usdcPart);
+        }
+
+        uint256 mebtcAmount = (mebtcUsdc * 1e18) / price;
+        if (mebtcAmount > 0) {
+            mebtcToken.safeTransferFrom(msg.sender, feeVaultMeBTC, mebtcAmount);
+        }
+    }
+
     // --------- ERC721 hook ----------
     function _update(address to, uint256 tokenId, address auth) internal override returns (address from) {
         from = super._update(to, tokenId, auth);
@@ -394,5 +465,3 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         return super.supportsInterface(interfaceId);
     }
 }
-
-

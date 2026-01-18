@@ -4,6 +4,11 @@ import { TOKENS } from '../../contracts/addresses'
 
 defineProps<{
   totalMined: bigint
+  totalStaked: bigint
+  feeVaultMebtc: bigint
+  demandVaultUsdc: bigint
+  poolMebtc: bigint
+  poolUsdc: bigint
   soldMiners: bigint
   mebtcDecimals: number
   firstMinerCreatedAt: bigint | null
@@ -75,6 +80,26 @@ function formatRemaining(seconds: number | null) {
           <div>Nächster Block in: {{ formatRemaining(nextSlotInSeconds) }}</div>
           <div>Miner aktiv: {{ soldMiners.toString() }}</div>
           <div>Miner verkauft: {{ soldMiners.toString() }}</div>
+          <div>
+            MeBTC gestakt:
+            <b>{{ formatUnits(totalStaked, mebtcDecimals) }}</b>
+          </div>
+          <div>
+            FeeVault MeBTC:
+            <b>{{ formatUnits(feeVaultMebtc, mebtcDecimals) }}</b>
+          </div>
+          <div>
+            DemandVault USDC:
+            <b>{{ formatUnits(demandVaultUsdc, TOKENS.usdc.decimals) }}</b>
+          </div>
+          <div>
+            Pool MeBTC:
+            <b>{{ formatUnits(poolMebtc, mebtcDecimals) }}</b>
+          </div>
+          <div>
+            Pool USDC:
+            <b>{{ formatUnits(poolUsdc, TOKENS.usdc.decimals) }}</b>
+          </div>
           <div v-if="error" style="color:#b00;">error: {{ error }}</div>
         </div>
       </div>

@@ -79,6 +79,16 @@ export const miningManagerAbi = [
   },
   {
     type: 'function',
+    name: 'claimWithMebtc',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'tokenIds', type: 'uint256[]' },
+      { name: 'mebtcShareBps', type: 'uint16' }
+    ],
+    outputs: []
+  },
+  {
+    type: 'function',
     name: 'preview',
     stateMutability: 'view',
     inputs: [
@@ -88,6 +98,36 @@ export const miningManagerAbi = [
     outputs: [
       { name: 'reward', type: 'uint256' },
       { name: 'feeUSDC', type: 'uint256' }
+    ]
+  }
+] as const
+
+export const stakeVaultAbi = [
+  {
+    type: 'function',
+    name: 'stake',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: []
+  },
+  {
+    type: 'function',
+    name: 'unstake',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: []
+  },
+  {
+    type: 'function',
+    name: 'getStakeInfo',
+    stateMutability: 'view',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [
+      { name: 'balance', type: 'uint256' },
+      { name: 'tier', type: 'uint8' },
+      { name: 'unlockAt', type: 'uint64' },
+      { name: 'hashBonusBps', type: 'uint16' },
+      { name: 'powerBonusBps', type: 'uint16' }
     ]
   }
 ] as const

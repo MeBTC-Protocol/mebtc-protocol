@@ -7,6 +7,7 @@ import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {MiningManager} from "../src/core/MiningManager.sol";
 import {MinerNFT} from "../src/nft/MinerNFT.sol";
 import {MeBTC} from "../src/token/MeBTC.sol";
+import {StakeVault} from "../src/core/StakeVault.sol";
 
 contract MockPayToken is ERC20 {
     uint8 private _decimals;
@@ -24,24 +25,47 @@ contract MockPayToken is ERC20 {
     }
 }
 
+contract MockTwapOracle {
+    bool internal ready;
+    uint256 internal price;
+
+    constructor(bool _ready, uint256 _price) {
+        ready = _ready;
+        price = _price;
+    }
+
+    function isReady() external view returns (bool) {
+        return ready;
+    }
+
+    function priceMebtcInUsdc() external view returns (uint256) {
+        return price;
+    }
+}
+
 contract MeBTCTest is Test {
     MockPayToken internal payToken;
     MiningManager internal manager;
     MinerNFT internal miner;
     MeBTC internal mebtc;
+    StakeVault internal stakeVault;
+    MockTwapOracle internal oracle;
 
-    address internal pool = address(0xBEEF);
+    address internal demandVault = address(0xBEEF);
+    address internal feeVaultMeBTC = address(0xFEE1);
     address internal project = address(0xCAFE);
     address internal royalty = address(0xD00D);
     address internal user = address(0xA11CE);
 
     function setUp() public {
         payToken = new MockPayToken("MockUSD", "mUSD", 6);
-        manager = new MiningManager(address(payToken), pool);
-        miner = new MinerNFT(address(payToken), pool, project, royalty, 0);
+        manager = new MiningManager(address(payToken));
         mebtc = new MeBTC(address(manager));
+        oracle = new MockTwapOracle(false, 0);
+        miner = new MinerNFT(address(payToken), demandVault, feeVaultMeBTC, project, royalty, 0, address(mebtc), address(oracle));
+        stakeVault = new StakeVault(address(mebtc), address(manager));
 
-        manager.init(address(mebtc), address(miner));
+        manager.init(address(mebtc), address(miner), address(stakeVault), demandVault, feeVaultMeBTC, address(oracle));
         miner.setManager(address(manager));
 
         uint256[4] memory powerCosts = [uint256(50_000), 150_000, 400_000, 1_000_000];
@@ -63,10 +87,10 @@ contract MeBTCTest is Test {
         MockPayToken badToken = new MockPayToken("Bad", "BAD", 18);
 
         vm.expectRevert(bytes("decimals"));
-        new MiningManager(address(badToken), pool);
+        new MiningManager(address(badToken));
 
         vm.expectRevert(bytes("decimals"));
-        new MinerNFT(address(badToken), pool, project, royalty, 0);
+        new MinerNFT(address(badToken), demandVault, feeVaultMeBTC, project, royalty, 0, address(mebtc), address(oracle));
 
         vm.expectRevert(bytes("decimals"));
         manager.setPayToken(address(badToken));
@@ -117,6 +141,6 @@ contract MeBTCTest is Test {
         vm.stopPrank();
 
         assertGt(mebtc.balanceOf(user), 0);
-        assertGt(payToken.balanceOf(pool), 0);
+        assertGt(payToken.balanceOf(demandVault), 0);
     }
 }

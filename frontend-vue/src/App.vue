@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { parseUnits } from 'ethers'
 import Header from './components/layout/Header.vue'
 import ThemeToggle from './components/common/ThemeToggle.vue'
 import WalletCard from './components/wallet/WalletCard.vue'
@@ -9,6 +10,8 @@ import ClaimCard from './components/miner/ClaimCard.vue'
 import MinerPricingCard from './components/miner/MinerPricingCard.vue'
 import NewsCard from './components/news/NewsCard.vue'
 import MiningStatsDropdown from './components/miner/MiningStatsDropdown.vue'
+import StakingCard from './components/staking/StakingCard.vue'
+import LiquidityCard from './components/liquidity/LiquidityCard.vue'
 
 import { ADDRESSES } from './contracts/addresses'
 import { ME_BTC_ICON_URL } from './contracts/assets'
@@ -22,6 +25,13 @@ import { useClaimSelected } from './composables/useClaimSelected'
 import { useMinerActions } from './composables/useMinerActions'
 import { useWalletAutoRefresh } from './composables/useWalletAutoRefresh'
 import { useMiningStats } from './composables/useMiningStats'
+import { useStakeInfo } from './composables/useStakeInfo'
+import { useStakeActions } from './composables/useStakeActions'
+import { useMebtcAllowance } from './composables/useMebtcAllowance'
+import { useApproveMebtc } from './composables/useApproveMebtc'
+import { useRouterAllowances } from './composables/useRouterAllowances'
+import { useApproveRouterTokens } from './composables/useApproveRouterTokens'
+import { useAddLiquidity } from './composables/useAddLiquidity'
 
 // wallet
 const { isConnected, address, chainId, onChain } = useWallet()
@@ -31,6 +41,11 @@ useWalletAutoRefresh()
 const { mebtc, payToken, loading: balancesLoading, mebtcDecimals, payTokenDecimals, payTokenSymbol } = useBalances()
 const {
   totalMined,
+  totalStaked,
+  feeVaultMebtc,
+  demandVaultUsdc,
+  poolMebtc,
+  poolUsdc,
   soldMiners,
   firstMinerCreatedAt,
   intervalsSinceFirst,
@@ -91,6 +106,52 @@ const {
   previewMap: () => previewMap.value
 })
 
+// staking
+const {
+  loading: stakeLoading,
+  balance: stakedBalance,
+  tier: stakeTier,
+  unlockAt,
+  hashBonusBps,
+  powerBonusBps
+} = useStakeInfo()
+
+const {
+  busy: stakeBusy,
+  error: stakeError,
+  lastTx: stakeLastTx,
+  stake,
+  unstake
+} = useStakeActions()
+
+const { allowanceText: mebtcAllowanceText } = useMebtcAllowance()
+const {
+  busy: approveMebtcBusy,
+  error: approveMebtcError,
+  lastTx: approveMebtcLastTx,
+  approveMax: approveMebtcMax
+} = useApproveMebtc()
+
+// liquidity
+const {
+  loading: routerAllowancesLoading,
+  usdcAllowanceText,
+  mebtcAllowanceText: routerMebtcAllowanceText
+} = useRouterAllowances()
+const {
+  busy: approveRouterBusy,
+  error: approveRouterError,
+  lastTx: approveRouterLastTx,
+  approveUsdc,
+  approveMebtc
+} = useApproveRouterTokens()
+const {
+  busy: addLiquidityBusy,
+  error: addLiquidityError,
+  lastTx: addLiquidityLastTx,
+  submit: addLiquidity
+} = useAddLiquidity()
+
 const approveManagerExactMissing = computed(() => {
   return totalFeeSelected.value > allowanceManager.value
     ? totalFeeSelected.value - allowanceManager.value
@@ -119,6 +180,20 @@ function setSelected(next: Record<string, boolean>) {
 function setApproveStats(payload: { missing: bigint; endValue: bigint }) {
   approveExactMissing.value = payload.missing
   approveExactValue.value = payload.endValue
+}
+
+async function stakeFromInput(amount: string) {
+  const v = amount.trim()
+  if (!v) throw new Error('betrag fehlt')
+  const amt = parseUnits(v, mebtcDecimals.value ?? 18)
+  await stake(amt)
+}
+
+async function unstakeFromInput(amount: string) {
+  const v = amount.trim()
+  if (!v) throw new Error('betrag fehlt')
+  const amt = parseUnits(v, mebtcDecimals.value ?? 18)
+  await unstake(amt)
 }
 </script>
 
@@ -156,6 +231,11 @@ function setApproveStats(payload: { missing: bigint; endValue: bigint }) {
                   />
                   <MiningStatsDropdown
                     :totalMined="totalMined"
+                    :totalStaked="totalStaked"
+                    :feeVaultMebtc="feeVaultMebtc"
+                    :demandVaultUsdc="demandVaultUsdc"
+                    :poolMebtc="poolMebtc"
+                    :poolUsdc="poolUsdc"
                     :soldMiners="soldMiners"
                     :mebtcDecimals="mebtcDecimals"
                     :firstMinerCreatedAt="firstMinerCreatedAt"
@@ -223,6 +303,36 @@ function setApproveStats(payload: { missing: bigint; endValue: bigint }) {
             :payTokenDecimals="payTokenDecimals"
             :owned="owned"
             @approve-stats="setApproveStats"
+          />
+
+          <StakingCard
+            class="grid-col-2"
+            :disabled="!isConnected || !onChain"
+            :busy="stakeBusy || approveMebtcBusy || stakeLoading"
+            :error="stakeError || approveMebtcError"
+            :lastTx="stakeLastTx || approveMebtcLastTx"
+            :allowanceText="mebtcAllowanceText()"
+            :stakedBalance="stakedBalance"
+            :tier="stakeTier"
+            :unlockAt="unlockAt"
+            :hashBonusBps="hashBonusBps"
+            :powerBonusBps="powerBonusBps"
+            :mebtcDecimals="mebtcDecimals"
+            :onApprove="approveMebtcMax"
+            :onStake="stakeFromInput"
+            :onUnstake="unstakeFromInput"
+          />
+
+          <LiquidityCard
+            :disabled="!isConnected || !onChain"
+            :busy="addLiquidityBusy || approveRouterBusy || routerAllowancesLoading"
+            :error="addLiquidityError || approveRouterError"
+            :lastTx="addLiquidityLastTx || approveRouterLastTx"
+            :usdcAllowanceText="usdcAllowanceText()"
+            :mebtcAllowanceText="routerMebtcAllowanceText()"
+            :onApproveUsdc="approveUsdc"
+            :onApproveMebtc="approveMebtc"
+            :onAddLiquidity="addLiquidity"
           />
 
           <ClaimCard
