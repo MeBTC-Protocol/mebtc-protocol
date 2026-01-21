@@ -222,14 +222,14 @@ function setApproveStats(payload: { missing: bigint; endValue: bigint }) {
 async function stakeFromInput(amount: string) {
   const v = amount.trim()
   if (!v) throw new Error('betrag fehlt')
-  const amt = parseUnits(v, mebtcDecimals.value ?? 18)
+  const amt = parseUnits(v, mebtcDecimals.value ?? TOKENS.mebtc.decimals)
   await stake(amt)
 }
 
 async function unstakeFromInput(amount: string) {
   const v = amount.trim()
   if (!v) throw new Error('betrag fehlt')
-  const amt = parseUnits(v, mebtcDecimals.value ?? 18)
+  const amt = parseUnits(v, mebtcDecimals.value ?? TOKENS.mebtc.decimals)
   await unstake(amt)
 }
 

@@ -13,7 +13,7 @@ interface IJoePairLike {
 
 contract TwapOracleJoeV2 is ITwapOracle {
     uint256 private constant Q112 = 2 ** 112;
-    uint8 private constant MEBTC_DECIMALS = 18;
+    uint8 private constant MEBTC_DECIMALS = 8;
 
     address public immutable mebtc;
     address public immutable usdc;

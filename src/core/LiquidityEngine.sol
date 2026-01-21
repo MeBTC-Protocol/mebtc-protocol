@@ -22,7 +22,7 @@ contract LiquidityEngine {
     uint16 public constant BPS = 10_000;
     uint16 public constant MAX_BURN_BPS = 2_000;
     uint8 public constant USDC_DECIMALS = 6;
-    uint8 public constant MEBTC_DECIMALS = 18;
+    uint8 public constant MEBTC_DECIMALS = 8;
 
     address public immutable usdc;
     address public immutable mebtc;

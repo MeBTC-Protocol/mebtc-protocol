@@ -12,9 +12,9 @@ interface IStakeChangeHook {
 contract StakeVault is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 public constant TIER1_THRESHOLD = 10_000e18;
-    uint256 public constant TIER2_THRESHOLD = 50_000e18;
-    uint256 public constant TIER3_THRESHOLD = 250_000e18;
+    uint256 public constant TIER1_THRESHOLD = 10_000e8;
+    uint256 public constant TIER2_THRESHOLD = 50_000e8;
+    uint256 public constant TIER3_THRESHOLD = 250_000e8;
 
     uint16 public constant TIER1_HASH_BPS = 500;
     uint16 public constant TIER1_POWER_BPS = 500;

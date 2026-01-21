@@ -8,11 +8,15 @@ contract MeBTC is ERC20 {
     error MaxCap();
 
     address public immutable miningManager;
-    uint256 public constant MAX_SUPPLY = 21_000_000e18;
+    uint256 public constant MAX_SUPPLY = 21_000_000e8;
 
     constructor(address _mm) ERC20("MeBTC", "MBTC") {
         require(_mm != address(0), "mm=0");
         miningManager = _mm;
+    }
+
+    function decimals() public pure override returns (uint8) {
+        return 8;
     }
 
     function mint(address to, uint256 amount) external {
@@ -21,4 +25,3 @@ contract MeBTC is ERC20 {
         _mint(to, amount);
     }
 }
-

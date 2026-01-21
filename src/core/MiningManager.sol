@@ -49,7 +49,9 @@ interface IStakeVault {
 contract MiningManager is ReentrancyGuard, Ownable {
     uint256 public constant CLAIM_INTERVAL = 600;       // 10 Minuten
     uint256 public constant HALVING_BLOCKS = 210_000;   // Slots bis Halving
-    uint256 public constant INITIAL_REWARD = 50e18;     // MBTC pro Slot (Netzwerk)
+    uint8 public constant MEBTC_DECIMALS = 8;
+    uint256 private constant MEBTC_UNIT = 1e8;
+    uint256 public constant INITIAL_REWARD = 50 * MEBTC_UNIT; // MBTC pro Slot (Netzwerk)
 
     uint256 public constant FEE_PER_KWH = 150_000;      // 0.15 USDC (6 dec)
     uint256 private constant KWH_DENOM = 3_600_000;     // 1000*3600
@@ -72,10 +74,12 @@ contract MiningManager is ReentrancyGuard, Ownable {
     uint256 public currentReward;
 
     uint256 public accRewardPerEffHash; // 1e12 scale
+    uint256 public accRewardRemainder;  // reward*1e12 remainder carried across slots
     uint256 public totalEffectiveHash;
 
     mapping(uint256 => uint256) public lastAccPerHash;
     mapping(uint256 => uint256) public pendingReward;
+    mapping(uint256 => uint256) public pendingRewardRemainder; // per-miner remainder (scaled by 1e12)
     mapping(uint256 => uint256) public lastSettleTime;
     mapping(uint256 => uint256) public debtUSDC;
     mapping(uint256 => uint256) public lastClaimedBlockIndex;
@@ -448,7 +452,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
             require(payToken.transferFrom(payer, demandVault, usdcPart), "paytoken");
         }
 
-        uint256 mebtcAmount = (mebtcUsdc * 1e18) / price;
+        uint256 mebtcAmount = (mebtcUsdc * MEBTC_UNIT) / price;
         if (mebtcAmount > 0) {
             IERC20 mebtcErc20 = IERC20(address(meBTC));
             require(mebtcErc20.allowance(payer, address(this)) >= mebtcAmount, "mebtc allowance");
@@ -467,7 +471,8 @@ contract MiningManager is ReentrancyGuard, Ownable {
         uint256 delta = areh - lastAccPerHash[id];
         (uint256 effHash, uint256 effPowerWatt,) = _computeEffForOwner(id, owner);
 
-        r = pendingReward[id] + (effHash * delta) / 1e12;
+        uint256 scaled = (effHash * delta) + pendingRewardRemainder[id];
+        r = pendingReward[id] + (scaled / 1e12);
 
         uint256 last = lastSettleTime[id];
         if (last == 0) {
@@ -529,7 +534,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
     function _settleWithEff(uint256 id, uint256 effHash, uint256 effPowerWatt) internal {
         uint256 delta = accRewardPerEffHash - lastAccPerHash[id];
         if (delta > 0) {
-            pendingReward[id] += (effHash * delta) / 1e12;
+            uint256 scaled = (effHash * delta) + pendingRewardRemainder[id];
+            pendingReward[id] += scaled / 1e12;
+            pendingRewardRemainder[id] = scaled % 1e12;
             lastAccPerHash[id] = accRewardPerEffHash;
         }
 
@@ -569,7 +576,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
 
         while (ts >= lastUpdate + CLAIM_INTERVAL) {
             minted += rw;
-            accRewardPerEffHash += (rw * 1e12) / totalEffectiveHash;
+            uint256 numerator = (rw * 1e12) + accRewardRemainder;
+            accRewardPerEffHash += numerator / totalEffectiveHash;
+            accRewardRemainder = numerator % totalEffectiveHash;
             lastUpdate += CLAIM_INTERVAL;
             blockIndex += 1;
             intervals += 1;
@@ -595,6 +604,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
         uint256 _rw = currentReward;
         uint256 _total = totalEffectiveHash;
         uint256 _areh = accRewardPerEffHash;
+        uint256 _rem = accRewardRemainder;
         uint256 intervals;
         uint256 minted;
 
@@ -614,7 +624,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
 
         while (ts >= _lastUpdate + CLAIM_INTERVAL) {
             minted += _rw;
-            _areh += (_rw * 1e12) / _total;
+            uint256 numerator = (_rw * 1e12) + _rem;
+            _areh += numerator / _total;
+            _rem = numerator % _total;
             _lastUpdate += CLAIM_INTERVAL;
             _li += 1;
             intervals += 1;

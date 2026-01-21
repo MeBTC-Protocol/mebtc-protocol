@@ -61,7 +61,7 @@ export function useMebtcPrice() {
       const reserveUsdc = usdcIs0 ? r0 : r1
       const reserveMebtc = usdcIs0 ? r1 : r0
 
-      const price = (reserveUsdc * 10n ** 18n) / reserveMebtc
+      const price = (reserveUsdc * 10n ** BigInt(TOKENS.mebtc.decimals)) / reserveMebtc
       priceUsdc.value = price
       source.value = 'pool'
     } catch (e: any) {

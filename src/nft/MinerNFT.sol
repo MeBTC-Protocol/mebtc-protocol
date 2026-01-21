@@ -43,6 +43,9 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     // Power upgrade: -5% pro step (500 bps)
     uint16 public constant POWER_STEP_BPS = 500;
 
+    uint8 public constant MEBTC_DECIMALS = 8;
+    uint256 private constant MEBTC_UNIT = 1e8;
+
     uint16 public constant PRIMARY_POOL_BPS = 9000; // 90%
     uint16 public constant PRIMARY_PROJECT_BPS = 1000; // 10%
     uint16 public constant MAX_MEBTC_SHARE_BPS = 3000; // 30%
@@ -444,7 +447,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
             payToken.safeTransferFrom(msg.sender, demandVault, usdcPart);
         }
 
-        uint256 mebtcAmount = (mebtcUsdc * 1e18) / price;
+        uint256 mebtcAmount = (mebtcUsdc * MEBTC_UNIT) / price;
         if (mebtcAmount > 0) {
             mebtcToken.safeTransferFrom(msg.sender, feeVaultMeBTC, mebtcAmount);
         }
