@@ -105,21 +105,27 @@ export async function claimMinerBatch(params: {
   owner: string
   tokenIds: bigint[]
   totalFeeNeeded: bigint
+  mebtcShareBps?: number
 }): Promise<{ claimTxHash: string; approveTxHash?: string }> {
-  const { provider, signer, owner, tokenIds, totalFeeNeeded } = params
+  const { provider, signer, owner, tokenIds, totalFeeNeeded, mebtcShareBps = 0 } = params
 
   if (tokenIds.length === 0) throw new Error("keine tokenIds")
+
+  const share = Math.max(0, Math.min(3000, Math.floor(mebtcShareBps)))
+  const usdcNeeded = totalFeeNeeded - (totalFeeNeeded * BigInt(share)) / 10_000n
 
   const { approveTxHash } = await ensureUsdcAllowanceExact({
     provider,
     signer,
     owner,
     spender: ADDRESSES.miningManager,
-    needed: totalFeeNeeded,
+    needed: usdcNeeded,
   })
 
   const mm = miningManagerWrite(signer)
-  const tx = await mm.claim(tokenIds)
+  const tx = share > 0
+    ? await mm.claimWithMebtc(tokenIds, share)
+    : await mm.claim(tokenIds)
   await tx.wait()
 
   return { claimTxHash: tx.hash, approveTxHash }

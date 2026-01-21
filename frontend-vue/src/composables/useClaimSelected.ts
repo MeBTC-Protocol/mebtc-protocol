@@ -47,7 +47,7 @@ export function useClaimSelected(params: {
     return sum
   })
 
-  async function claim() {
+  async function claim(mebtcShareBps = 0) {
     error.value = ''
     lastTx.value = ''
     lastApproveTx.value = ''
@@ -72,13 +72,14 @@ export function useClaimSelected(params: {
 
     busy.value = true
     try {
-      const res = await claimMinerBatch({
-        provider,
-        signer,
-        owner: w.address.value,
-        tokenIds: selectedIds.value,
-        totalFeeNeeded: totalFeeSelected.value
-      })
+    const res = await claimMinerBatch({
+      provider,
+      signer,
+      owner: w.address.value,
+      tokenIds: selectedIds.value,
+      totalFeeNeeded: totalFeeSelected.value,
+      mebtcShareBps
+    })
       lastApproveTx.value = res.approveTxHash ?? ''
       lastTx.value = res.claimTxHash
       triggerRefresh('claim-miner', { rescanOwned: true })
@@ -100,4 +101,3 @@ export function useClaimSelected(params: {
     claim
   }
 }
-

@@ -23,6 +23,11 @@ const props = defineProps<{
 }>()
 
 const amount = ref("")
+const tierOptions = [
+  { label: "Tier 1 (10k)", amount: "10000", bonus: "+5% Hash / -5% Power", lock: "30d" },
+  { label: "Tier 2 (50k)", amount: "50000", bonus: "+10% Hash / -12% Power", lock: "90d" },
+  { label: "Tier 3 (250k)", amount: "250000", bonus: "+15% Hash / -20% Power", lock: "180d" }
+]
 
 const unlockLabel = computed(() => {
   if (!props.unlockAt) return "-"
@@ -65,6 +70,21 @@ const tierLabel = computed(() => {
         class="ui-input"
         :disabled="disabled || busy"
       />
+      <div class="ui-row">
+        <Button
+          v-for="opt in tierOptions"
+          :key="opt.label"
+          :disabled="disabled || busy"
+          @click="amount = opt.amount"
+        >
+          {{ opt.label }}
+        </Button>
+      </div>
+      <div class="ui-row ui-muted" style="gap:16px;">
+        <div v-for="opt in tierOptions" :key="opt.label">
+          {{ opt.label }}: {{ opt.bonus }} (Lock {{ opt.lock }})
+        </div>
+      </div>
       <Button :disabled="disabled || busy" @click="() => onApprove().catch(() => {})">
         Approve MeBTC
       </Button>

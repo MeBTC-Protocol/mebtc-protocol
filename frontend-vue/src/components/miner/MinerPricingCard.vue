@@ -21,8 +21,13 @@ const props = defineProps<{
   actionLastTx: string
   onApproveExact: (amount: bigint) => void
   onBuyModel: (modelId: number, qty: number) => void
-  onUpgradePower: (tokenId: bigint) => void
-  onUpgradeHash: (tokenId: bigint) => void
+  onUpgradePower: (tokenId: bigint, mebtcShareBps: number) => void
+  onUpgradeHash: (tokenId: bigint, mebtcShareBps: number) => void
+  onApproveMebtcUpgrade: () => void
+  mebtcUpgradeAllowanceText: string
+  mebtcUpgradeApproveBusy: boolean
+  mebtcUpgradeApproveError: string
+  mebtcUpgradeApproveLastTx: string
   payTokenSymbol: string
   payTokenDecimals: number
   owned: bigint[]
@@ -34,6 +39,7 @@ const selectedModelId = ref<number>(1)
 const qty = ref<number>(1)
 const upgradeTokenId = ref<string>('')
 const upgradeId = computed(() => parsedUpgradeTokenId())
+const mebtcSharePercent = ref<number>(0)
 
 // helpers: macht formatUnits crash-proof
 function bn(v: unknown): bigint {
@@ -85,6 +91,11 @@ function parsedUpgradeTokenId(): bigint | null {
     return null
   }
 }
+
+const mebtcShareBps = computed(() => {
+  const p = Math.max(0, Math.min(30, Math.floor(mebtcSharePercent.value || 0)))
+  return p * 100
+})
 
 const { states: upgradeStates } = useMinerUpgradeStates(() => (upgradeId.value ? [upgradeId.value] : []))
 
@@ -194,9 +205,18 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
             class="ui-input"
             style="width:120px;"
           />
+          <label class="ui-muted" style="font-size:12px;">
+            MeBTC Anteil:
+            <select v-model.number="mebtcSharePercent" class="ui-select" style="width:90px;">
+              <option :value="0">0%</option>
+              <option :value="10">10%</option>
+              <option :value="20">20%</option>
+              <option :value="30">30%</option>
+            </select>
+          </label>
           <Button
             :disabled="disabled || actionBusy || !parsedUpgradeTokenId()"
-            @click="() => { const id = parsedUpgradeTokenId(); if (id) onUpgradePower(id) }"
+            @click="() => { const id = parsedUpgradeTokenId(); if (id) onUpgradePower(id, mebtcShareBps) }"
             size="sm"
           >
             <template #icon>
@@ -217,7 +237,7 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
           </Button>
           <Button
             :disabled="disabled || actionBusy || !parsedUpgradeTokenId()"
-            @click="() => { const id = parsedUpgradeTokenId(); if (id) onUpgradeHash(id) }"
+            @click="() => { const id = parsedUpgradeTokenId(); if (id) onUpgradeHash(id, mebtcShareBps) }"
             size="sm"
           >
             <template #icon>
@@ -242,6 +262,24 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
             </template>
             upgrade hash
           </Button>
+        </div>
+        <div class="ui-row" style="margin-top:6px;">
+          <Button
+            :disabled="disabled || mebtcUpgradeApproveBusy"
+            size="sm"
+            @click="onApproveMebtcUpgrade"
+          >
+            approve MeBTC (upgrades)
+          </Button>
+          <span class="ui-muted" style="font-size:12px;">
+            allowance: {{ mebtcUpgradeAllowanceText }}
+          </span>
+        </div>
+        <div v-if="mebtcUpgradeApproveError" style="margin-top:6px;">
+          mebtc approve error: {{ mebtcUpgradeApproveError }}
+        </div>
+        <div v-if="mebtcUpgradeApproveLastTx" class="ui-muted" style="margin-top:6px;font-size:12px;">
+          mebtc approve tx: {{ mebtcUpgradeApproveLastTx }}
         </div>
         <div v-if="upgradeTokenId" class="ui-muted" style="margin-top:6px;font-size:12px;">
           <span v-if="upgradeState.status === 'loading'">loading upgrade status…</span>

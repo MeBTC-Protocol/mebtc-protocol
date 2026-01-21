@@ -314,14 +314,30 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     // --------- upgrades (pending until claim) ----------
     function requestUpgradePower(uint256 tokenId) external nonReentrant returns (uint16 newPendingPowerBps) {
-        return requestUpgradePowerWithMebtc(tokenId, 0);
+        return _requestUpgradePower(tokenId, 0);
     }
 
     function requestUpgradePowerWithMebtc(uint256 tokenId, uint16 mebtcShareBps)
-        public
+        external
         nonReentrant
         returns (uint16 newPendingPowerBps)
     {
+        return _requestUpgradePower(tokenId, mebtcShareBps);
+    }
+
+    function requestUpgradeHash(uint256 tokenId) external nonReentrant returns (uint16 newPendingHashBps) {
+        return _requestUpgradeHash(tokenId, 0);
+    }
+
+    function requestUpgradeHashWithMebtc(uint256 tokenId, uint16 mebtcShareBps)
+        external
+        nonReentrant
+        returns (uint16 newPendingHashBps)
+    {
+        return _requestUpgradeHash(tokenId, mebtcShareBps);
+    }
+
+    function _requestUpgradePower(uint256 tokenId, uint16 mebtcShareBps) internal returns (uint16 newPendingPowerBps) {
         require(ownerOf(tokenId) == msg.sender, "!owner");
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
@@ -345,15 +361,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         emit UpgradeRequestedPower(tokenId, newPendingPowerBps, cost);
     }
 
-    function requestUpgradeHash(uint256 tokenId) external nonReentrant returns (uint16 newPendingHashBps) {
-        return requestUpgradeHashWithMebtc(tokenId, 0);
-    }
-
-    function requestUpgradeHashWithMebtc(uint256 tokenId, uint16 mebtcShareBps)
-        public
-        nonReentrant
-        returns (uint16 newPendingHashBps)
-    {
+    function _requestUpgradeHash(uint256 tokenId, uint16 mebtcShareBps) internal returns (uint16 newPendingHashBps) {
         require(ownerOf(tokenId) == msg.sender, "!owner");
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");

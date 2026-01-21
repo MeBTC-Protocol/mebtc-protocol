@@ -8,7 +8,7 @@ const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)'
 ]
 
-export function useApproveRouterTokens() {
+export function useApproveMebtcForMiner() {
   const { getSigner, isConnected, onChain } = useWallet()
   const { triggerRefresh } = useGlobalRefresh()
 
@@ -16,7 +16,7 @@ export function useApproveRouterTokens() {
   const error = ref('')
   const lastTx = ref('')
 
-  async function approve(token: string) {
+  async function approve(amount: bigint) {
     error.value = ''
     lastTx.value = ''
 
@@ -26,11 +26,11 @@ export function useApproveRouterTokens() {
     busy.value = true
     try {
       const signer = await getSigner()
-      const erc20 = new Contract(token, ERC20_ABI, signer)
-      const tx = await erc20.approve(ADDRESSES.router, MaxUint256)
+      const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, signer)
+      const tx = await mebtc.approve(ADDRESSES.minerNft, amount)
       lastTx.value = tx.hash
       await tx.wait()
-      triggerRefresh('approve-router')
+      triggerRefresh('approve-mebtc-upgrade')
     } catch (e: any) {
       error.value = e?.shortMessage ?? e?.message ?? String(e)
       throw e
@@ -39,17 +39,9 @@ export function useApproveRouterTokens() {
     }
   }
 
-  async function approveUsdc() {
-    return approve(ADDRESSES.usdc)
+  async function approveMax() {
+    return approve(MaxUint256)
   }
 
-  async function approveMebtc() {
-    return approve(ADDRESSES.mebtc)
-  }
-
-  async function approveLp() {
-    return approve(ADDRESSES.pair)
-  }
-
-  return { busy, error, lastTx, approveUsdc, approveMebtc, approveLp }
+  return { busy, error, lastTx, approveMax }
 }

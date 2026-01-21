@@ -29,9 +29,16 @@ import { useStakeInfo } from './composables/useStakeInfo'
 import { useStakeActions } from './composables/useStakeActions'
 import { useMebtcAllowance } from './composables/useMebtcAllowance'
 import { useApproveMebtc } from './composables/useApproveMebtc'
+import { useMebtcUpgradeAllowance } from './composables/useMebtcUpgradeAllowance'
+import { useApproveMebtcForMiner } from './composables/useApproveMebtcForMiner'
+import { useMebtcManagerAllowance } from './composables/useMebtcManagerAllowance'
+import { useApproveMebtcForManager } from './composables/useApproveMebtcForManager'
 import { useRouterAllowances } from './composables/useRouterAllowances'
 import { useApproveRouterTokens } from './composables/useApproveRouterTokens'
 import { useAddLiquidity } from './composables/useAddLiquidity'
+import { useRemoveLiquidity } from './composables/useRemoveLiquidity'
+import { useLpPosition } from './composables/useLpPosition'
+import { useMebtcPrice } from './composables/useMebtcPrice'
 
 // wallet
 const { isConnected, address, chainId, onChain } = useWallet()
@@ -39,6 +46,7 @@ useWalletAutoRefresh()
 
 // balances
 const { mebtc, payToken, loading: balancesLoading, mebtcDecimals, payTokenDecimals, payTokenSymbol } = useBalances()
+const { priceText: mebtcPriceText, sourceText: mebtcPriceSource } = useMebtcPrice()
 const {
   totalMined,
   totalStaked,
@@ -125,25 +133,41 @@ const {
 } = useStakeActions()
 
 const { allowanceText: mebtcAllowanceText } = useMebtcAllowance()
+const { allowanceText: mebtcUpgradeAllowanceText } = useMebtcUpgradeAllowance()
+const { allowanceText: mebtcManagerAllowanceText } = useMebtcManagerAllowance()
 const {
   busy: approveMebtcBusy,
   error: approveMebtcError,
   lastTx: approveMebtcLastTx,
   approveMax: approveMebtcMax
 } = useApproveMebtc()
+const {
+  busy: approveMebtcUpgradeBusy,
+  error: approveMebtcUpgradeError,
+  lastTx: approveMebtcUpgradeLastTx,
+  approveMax: approveMebtcUpgradeMax
+} = useApproveMebtcForMiner()
+const {
+  busy: approveMebtcManagerBusy,
+  error: approveMebtcManagerError,
+  lastTx: approveMebtcManagerLastTx,
+  approveMax: approveMebtcManagerMax
+} = useApproveMebtcForManager()
 
 // liquidity
 const {
   loading: routerAllowancesLoading,
   usdcAllowanceText,
-  mebtcAllowanceText: routerMebtcAllowanceText
+  mebtcAllowanceText: routerMebtcAllowanceText,
+  lpAllowanceText
 } = useRouterAllowances()
 const {
   busy: approveRouterBusy,
   error: approveRouterError,
   lastTx: approveRouterLastTx,
   approveUsdc,
-  approveMebtc
+  approveMebtc,
+  approveLp
 } = useApproveRouterTokens()
 const {
   busy: addLiquidityBusy,
@@ -151,6 +175,19 @@ const {
   lastTx: addLiquidityLastTx,
   submit: addLiquidity
 } = useAddLiquidity()
+const {
+  busy: removeLiquidityBusy,
+  error: removeLiquidityError,
+  lastTx: removeLiquidityLastTx,
+  submit: removeLiquidity
+} = useRemoveLiquidity()
+const {
+  loading: lpPositionLoading,
+  lpBalanceText,
+  positionUsdcText,
+  positionMebtcText,
+  shareText
+} = useLpPosition()
 
 const approveManagerExactMissing = computed(() => {
   return totalFeeSelected.value > allowanceManager.value
@@ -195,6 +232,17 @@ async function unstakeFromInput(amount: string) {
   const amt = parseUnits(v, mebtcDecimals.value ?? 18)
   await unstake(amt)
 }
+
+const headerMeta = computed(() => {
+  const priceValue = mebtcPriceText.value === '-'
+    ? '-'
+    : `${mebtcPriceText.value} USDC (${mebtcPriceSource.value})`
+  return [
+    { label: 'MinerNFT', value: ADDRESSES.minerNft },
+    { label: 'Manager', value: ADDRESSES.miningManager },
+    { label: 'MeBTC price', value: priceValue }
+  ]
+})
 </script>
 
 <template>
@@ -209,10 +257,7 @@ async function unstakeFromInput(amount: string) {
       <main class="app-main">
         <Header
           title="MeBTC Dashboard"
-          :meta="[
-            { label: 'MinerNFT', value: ADDRESSES.minerNft },
-            { label: 'Manager', value: ADDRESSES.miningManager }
-          ]"
+          :meta="headerMeta"
           :iconUrl="ME_BTC_ICON_URL"
         >
           <template #right>
@@ -299,6 +344,11 @@ async function unstakeFromInput(amount: string) {
             :onBuyModel="buyFromModel"
             :onUpgradePower="requestUpgradePower"
             :onUpgradeHash="requestUpgradeHash"
+            :onApproveMebtcUpgrade="approveMebtcUpgradeMax"
+            :mebtcUpgradeAllowanceText="mebtcUpgradeAllowanceText()"
+            :mebtcUpgradeApproveBusy="approveMebtcUpgradeBusy"
+            :mebtcUpgradeApproveError="approveMebtcUpgradeError"
+            :mebtcUpgradeApproveLastTx="approveMebtcUpgradeLastTx"
             :payTokenSymbol="payTokenSymbol"
             :payTokenDecimals="payTokenDecimals"
             :owned="owned"
@@ -325,14 +375,21 @@ async function unstakeFromInput(amount: string) {
 
           <LiquidityCard
             :disabled="!isConnected || !onChain"
-            :busy="addLiquidityBusy || approveRouterBusy || routerAllowancesLoading"
-            :error="addLiquidityError || approveRouterError"
-            :lastTx="addLiquidityLastTx || approveRouterLastTx"
+            :busy="addLiquidityBusy || removeLiquidityBusy || approveRouterBusy || routerAllowancesLoading || lpPositionLoading"
+            :error="addLiquidityError || removeLiquidityError || approveRouterError"
+            :lastTx="addLiquidityLastTx || removeLiquidityLastTx || approveRouterLastTx"
             :usdcAllowanceText="usdcAllowanceText()"
             :mebtcAllowanceText="routerMebtcAllowanceText()"
+            :lpAllowanceText="lpAllowanceText()"
+            :lpBalanceText="lpBalanceText()"
+            :lpPositionUsdcText="positionUsdcText()"
+            :lpPositionMebtcText="positionMebtcText()"
+            :lpShareText="shareText()"
             :onApproveUsdc="approveUsdc"
             :onApproveMebtc="approveMebtc"
+            :onApproveLp="approveLp"
             :onAddLiquidity="addLiquidity"
+            :onRemoveLiquidity="removeLiquidity"
           />
 
           <ClaimCard
@@ -348,8 +405,13 @@ async function unstakeFromInput(amount: string) {
             :lastApproveTx="lastApproveTx"
             :totalFeeSelected="totalFeeSelected"
             :allowanceManagerText="allowanceManagerText()"
+            :mebtcAllowanceText="mebtcManagerAllowanceText()"
+            :mebtcApproveBusy="approveMebtcManagerBusy"
+            :mebtcApproveError="approveMebtcManagerError"
+            :mebtcApproveLastTx="approveMebtcManagerLastTx"
             :payTokenSymbol="payTokenSymbol"
             :payTokenDecimals="payTokenDecimals"
+            :onApproveMebtc="approveMebtcManagerMax"
             :onClaim="claim"
           />
         </div>

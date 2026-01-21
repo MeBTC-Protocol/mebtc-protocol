@@ -16,6 +16,7 @@ export function useRouterAllowances() {
   const loading = ref(false)
   const usdcAllowance = ref<bigint>(0n)
   const mebtcAllowance = ref<bigint>(0n)
+  const lpAllowance = ref<bigint>(0n)
 
   watchEffect(async () => {
     const rid = ++requestId
@@ -24,6 +25,7 @@ export function useRouterAllowances() {
     if (!a) {
       usdcAllowance.value = 0n
       mebtcAllowance.value = 0n
+      lpAllowance.value = 0n
       return
     }
 
@@ -32,14 +34,17 @@ export function useRouterAllowances() {
       const p = readProvider.value
       const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p)
       const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p)
+      const lp = new Contract(ADDRESSES.pair, ERC20_ABI, p)
 
-      const [u, m] = await Promise.all([
+      const [u, m, l] = await Promise.all([
         usdc.allowance(a, ADDRESSES.router),
-        mebtc.allowance(a, ADDRESSES.router)
+        mebtc.allowance(a, ADDRESSES.router),
+        lp.allowance(a, ADDRESSES.router)
       ])
       if (rid !== requestId) return
       usdcAllowance.value = u as bigint
       mebtcAllowance.value = m as bigint
+      lpAllowance.value = l as bigint
     } finally {
       if (rid === requestId) {
         loading.value = false
@@ -56,7 +61,9 @@ export function useRouterAllowances() {
     loading,
     usdcAllowance,
     mebtcAllowance,
+    lpAllowance,
     usdcAllowanceText: () => fmt(usdcAllowance.value, TOKENS.usdc.decimals),
-    mebtcAllowanceText: () => fmt(mebtcAllowance.value, TOKENS.mebtc.decimals)
+    mebtcAllowanceText: () => fmt(mebtcAllowance.value, TOKENS.mebtc.decimals),
+    lpAllowanceText: () => fmt(lpAllowance.value, 18)
   }
 }

@@ -8,7 +8,9 @@ import { useGlobalRefresh } from './useGlobalRefresh'
 const MINER_ACTION_ABI = [
   'function buyFromModel(uint16 modelId, uint256 quantity) returns (uint256)',
   'function requestUpgradePower(uint256 tokenId) returns (uint16)',
-  'function requestUpgradeHash(uint256 tokenId) returns (uint16)'
+  'function requestUpgradeHash(uint256 tokenId) returns (uint16)',
+  'function requestUpgradePowerWithMebtc(uint256 tokenId, uint16 mebtcShareBps) returns (uint16)',
+  'function requestUpgradeHashWithMebtc(uint256 tokenId, uint16 mebtcShareBps) returns (uint16)'
 ]
 
 export function useMinerActions() {
@@ -54,9 +56,11 @@ export function useMinerActions() {
     })
   }
 
-  async function requestUpgradePower(tokenId: bigint) {
+  async function requestUpgradePower(tokenId: bigint, mebtcShareBps = 0) {
     await withSigner(async (miner) => {
-      const tx = await miner.requestUpgradePower(tokenId)
+      const tx = mebtcShareBps > 0
+        ? await miner.requestUpgradePowerWithMebtc(tokenId, mebtcShareBps)
+        : await miner.requestUpgradePower(tokenId)
       lastTx.value = tx.hash
       await tx.wait()
       triggerRefresh()
@@ -64,9 +68,11 @@ export function useMinerActions() {
     })
   }
 
-  async function requestUpgradeHash(tokenId: bigint) {
+  async function requestUpgradeHash(tokenId: bigint, mebtcShareBps = 0) {
     await withSigner(async (miner) => {
-      const tx = await miner.requestUpgradeHash(tokenId)
+      const tx = mebtcShareBps > 0
+        ? await miner.requestUpgradeHashWithMebtc(tokenId, mebtcShareBps)
+        : await miner.requestUpgradeHash(tokenId)
       lastTx.value = tx.hash
       await tx.wait()
       triggerRefresh()
