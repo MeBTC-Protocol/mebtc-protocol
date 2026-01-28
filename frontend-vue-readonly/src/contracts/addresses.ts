@@ -1,0 +1,18 @@
+export const ADDRESSES = {
+  minerNft: "0xb3148B3cDAf925C9d7D05b1663d16547D0aedFe1",
+  miningManager: "0x171e883E4bC239a6AC0c9d0005d7e54ef0AfF49D",
+  mebtc: "0x7B589931C78dce6C8f668F8202bAf4CB5AE293fE",
+  usdc: "0x01900649664B7f221D11b6194A49597CBdF8C72e",
+  router: "0xd7f655E3376cE2D7A2b08fF01Eb3B1023191A901",
+  stakeVault: "0x85C1326BD2C11Bc11741d4d2EBb4bdD9dF238734",
+  engine: "0x305A922572240a0C282dd50797a19F2F0d29Ea1D",
+  demandVault: "0x3E8a83237Db4f45A0CE376B13fD44AEbDFBF5987",
+  feeVaultMeBTC: "0x6e216DA49d04Db820d86Be457757da521C58347c",
+  twapOracle: "0x96D42b73BB654984922d58e2c62F2F60D4d461a0",
+  pair: "0x6FB896c56D80800DAf73EABf9920df6eD3C728da",
+} as const;
+
+export const TOKENS = {
+  mebtc: { symbol: "MeBTC", decimals: 8 },
+  usdc: { symbol: "USDC", decimals: 6 },
+} as const;

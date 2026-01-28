@@ -8,26 +8,19 @@ import { useMinerUpgradeStates } from '../../composables/useMinerUpgradeStates'
 
 const emit = defineEmits<{
   (e: 'approve-stats', payload: { missing: bigint; endValue: bigint }): void
+  (e: 'upgrade-costs', payload: { power: bigint; hash: bigint; mebtcShareBps: number }): void
 }>()
 
 const props = defineProps<{
   disabled: boolean
   allowanceMiner: bigint
-  approveBusy: boolean
-  approveError: string
-  approveLastTx: string
   actionBusy: boolean
   actionError: string
   actionLastTx: string
-  onApproveExact: (amount: bigint) => void
   onBuyModel: (modelId: number, qty: number) => void
   onUpgradePower: (tokenId: bigint, mebtcShareBps: number) => void
   onUpgradeHash: (tokenId: bigint, mebtcShareBps: number) => void
-  onApproveMebtcUpgrade: () => void
   mebtcUpgradeAllowanceText: string
-  mebtcUpgradeApproveBusy: boolean
-  mebtcUpgradeApproveError: string
-  mebtcUpgradeApproveLastTx: string
   payTokenSymbol: string
   payTokenDecimals: number
   owned: bigint[]
@@ -131,8 +124,32 @@ const upgradeNextCostText = computed(() => {
   return `next cost:P ${powerText} ${props.payTokenSymbol} |H ${hashText} ${props.payTokenSymbol}`
 })
 
+const upgradePowerCost = computed(() => {
+  if (upgradeState.value.status !== 'ok') return 0n
+  const st = upgradeState.value
+  const model = modelById.value.get(st.modelId)
+  if (!model) return 0n
+  const idx = st.powerActiveSteps + st.powerPendingSteps
+  const cost = model.powerStepCost?.[idx]
+  return typeof cost === 'bigint' ? cost : 0n
+})
+
+const upgradeHashCost = computed(() => {
+  if (upgradeState.value.status !== 'ok') return 0n
+  const st = upgradeState.value
+  const model = modelById.value.get(st.modelId)
+  if (!model) return 0n
+  const idx = st.hashActiveSteps + st.hashPendingSteps
+  const cost = model.hashStepCost?.[idx]
+  return typeof cost === 'bigint' ? cost : 0n
+})
+
 watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
   emit('approve-stats', { missing, endValue })
+}, { immediate: true })
+
+watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share]) => {
+  emit('upgrade-costs', { power, hash, mebtcShareBps: share })
 }, { immediate: true })
 </script>
 
@@ -163,11 +180,14 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
         </div>
 
         <Button
-          :disabled="disabled || actionBusy || !selectedModel || missingForBuy > 0n"
+          :disabled="disabled || actionBusy || !selectedModel"
           @click="onBuyModel(selectedModelId, qty)"
         >
           buy miner (model {{ selectedModelId }}, qty {{ Math.max(1, qty || 1) }})
         </Button>
+      </div>
+      <div v-if="missingForBuy > 0n" class="ui-muted" style="margin-top:6px;">
+        approval needed: {{ fmt(missingForBuy) }} {{ payTokenSymbol }}
       </div>
 
       <div v-if="selectedModel" class="ui-muted" style="margin-top:10px;">
@@ -264,22 +284,9 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
           </Button>
         </div>
         <div class="ui-row" style="margin-top:6px;">
-          <Button
-            :disabled="disabled || mebtcUpgradeApproveBusy"
-            size="sm"
-            @click="onApproveMebtcUpgrade"
-          >
-            approve MeBTC (upgrades)
-          </Button>
           <span class="ui-muted" style="font-size:12px;">
-            allowance: {{ mebtcUpgradeAllowanceText }}
+            MeBTC upgrade allowance: {{ mebtcUpgradeAllowanceText }}
           </span>
-        </div>
-        <div v-if="mebtcUpgradeApproveError" style="margin-top:6px;">
-          mebtc approve error: {{ mebtcUpgradeApproveError }}
-        </div>
-        <div v-if="mebtcUpgradeApproveLastTx" class="ui-muted" style="margin-top:6px;font-size:12px;">
-          mebtc approve tx: {{ mebtcUpgradeApproveLastTx }}
         </div>
         <div v-if="upgradeTokenId" class="ui-muted" style="margin-top:6px;font-size:12px;">
           <span v-if="upgradeState.status === 'loading'">loading upgrade status…</span>
@@ -296,8 +303,6 @@ watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
         </div>
       </div>
 
-      <div v-if="approveError" style="margin-top:10px;">approve error: {{ approveError }}</div>
-      <div v-if="approveLastTx" class="ui-muted" style="margin-top:10px;">approve tx: {{ approveLastTx }}</div>
       <div v-if="actionError" style="margin-top:10px;">action error: {{ actionError }}</div>
       <div v-if="actionLastTx" class="ui-muted" style="margin-top:10px;">action tx: {{ actionLastTx }}</div>
     </div>

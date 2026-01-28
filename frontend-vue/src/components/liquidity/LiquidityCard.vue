@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue"
+import { ref, watch } from "vue"
+import { formatUnits, parseUnits } from "ethers"
+import { TOKENS } from "../../contracts/addresses"
 import Card from "../common/Card.vue"
 import Button from "../common/Button.vue"
 
@@ -8,16 +10,12 @@ const props = defineProps<{
   busy: boolean
   error: string
   lastTx: string
-  usdcAllowanceText: string
-  mebtcAllowanceText: string
-  lpAllowanceText: string
   lpBalanceText: string
   lpPositionUsdcText: string
   lpPositionMebtcText: string
   lpShareText: string
-  onApproveUsdc: () => void
-  onApproveMebtc: () => void
-  onApproveLp: () => void
+  poolUsdc: bigint
+  poolMebtc: bigint
   onAddLiquidity: (usdcAmount: string, mebtcAmount: string) => void
   onRemoveLiquidity: (lpAmount: string) => void
 }>()
@@ -25,15 +23,76 @@ const props = defineProps<{
 const usdcAmount = ref("")
 const mebtcAmount = ref("")
 const lpAmount = ref("")
+const lastEdited = ref<"usdc" | "mebtc" | null>(null)
+const internalUpdate = ref(false)
+
+function trimZeros(value: string) {
+  if (!value.includes(".")) return value
+  const trimmed = value.replace(/0+$/, "").replace(/\.$/, "")
+  return trimmed === "" ? "0" : trimmed
+}
+
+function setUsdcAmount(value: string) {
+  internalUpdate.value = true
+  usdcAmount.value = value
+  internalUpdate.value = false
+}
+
+function setMebtcAmount(value: string) {
+  internalUpdate.value = true
+  mebtcAmount.value = value
+  internalUpdate.value = false
+}
+
+function updateFromUsdc() {
+  const input = usdcAmount.value.trim()
+  if (!input) {
+    setMebtcAmount("")
+    return
+  }
+  if (props.poolUsdc <= 0n || props.poolMebtc <= 0n) return
+  try {
+    const usdc = parseUnits(input, TOKENS.usdc.decimals)
+    const mebtc = (usdc * props.poolMebtc) / props.poolUsdc
+    setMebtcAmount(trimZeros(formatUnits(mebtc, TOKENS.mebtc.decimals)))
+  } catch {}
+}
+
+function updateFromMebtc() {
+  const input = mebtcAmount.value.trim()
+  if (!input) {
+    setUsdcAmount("")
+    return
+  }
+  if (props.poolUsdc <= 0n || props.poolMebtc <= 0n) return
+  try {
+    const mebtc = parseUnits(input, TOKENS.mebtc.decimals)
+    const usdc = (mebtc * props.poolUsdc) / props.poolMebtc
+    setUsdcAmount(trimZeros(formatUnits(usdc, TOKENS.usdc.decimals)))
+  } catch {}
+}
+
+watch([usdcAmount, () => props.poolUsdc, () => props.poolMebtc], () => {
+  if (internalUpdate.value || lastEdited.value !== "usdc") return
+  updateFromUsdc()
+}, { flush: "sync" })
+
+watch([mebtcAmount, () => props.poolUsdc, () => props.poolMebtc], () => {
+  if (internalUpdate.value || lastEdited.value !== "mebtc") return
+  updateFromMebtc()
+}, { flush: "sync" })
+
+function onUsdcInput() {
+  lastEdited.value = "usdc"
+}
+
+function onMebtcInput() {
+  lastEdited.value = "mebtc"
+}
 </script>
 
 <template>
   <Card title="Liquidity">
-    <div class="ui-row">
-      <div class="ui-muted">USDC allowance: {{ usdcAllowanceText }}</div>
-      <div class="ui-muted">MeBTC allowance: {{ mebtcAllowanceText }}</div>
-      <div class="ui-muted">LP allowance: {{ lpAllowanceText }}</div>
-    </div>
     <div class="ui-row">
       <div class="ui-muted">LP balance: {{ lpBalanceText }}</div>
       <div class="ui-muted">
@@ -50,6 +109,7 @@ const lpAmount = ref("")
         placeholder="USDC amount"
         class="ui-input"
         :disabled="disabled || busy"
+        @input="onUsdcInput"
       />
       <input
         v-model="mebtcAmount"
@@ -57,16 +117,11 @@ const lpAmount = ref("")
         placeholder="MeBTC amount"
         class="ui-input"
         :disabled="disabled || busy"
+        @input="onMebtcInput"
       />
     </div>
 
     <div class="ui-row">
-      <Button :disabled="disabled || busy" @click="() => onApproveUsdc().catch(() => {})">
-        Approve USDC
-      </Button>
-      <Button :disabled="disabled || busy" @click="() => onApproveMebtc().catch(() => {})">
-        Approve MeBTC
-      </Button>
       <Button
         :disabled="disabled || busy"
         @click="() => onAddLiquidity(usdcAmount, mebtcAmount).catch(() => {})"
@@ -86,9 +141,6 @@ const lpAmount = ref("")
       />
       <Button :disabled="disabled || busy" @click="lpAmount = lpBalanceText">
         Max
-      </Button>
-      <Button :disabled="disabled || busy" @click="() => onApproveLp().catch(() => {})">
-        Approve LP
       </Button>
       <Button
         :disabled="disabled || busy"

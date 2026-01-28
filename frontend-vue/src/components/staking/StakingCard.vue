@@ -17,7 +17,7 @@ const props = defineProps<{
   hashBonusBps: number
   powerBonusBps: number
   mebtcDecimals: number
-  onApprove: () => void
+  inputError: string
   onStake: (amount: string) => void
   onUnstake: (amount: string) => void
 }>()
@@ -85,9 +85,6 @@ const tierLabel = computed(() => {
           {{ opt.label }}: {{ opt.bonus }} (Lock {{ opt.lock }})
         </div>
       </div>
-      <Button :disabled="disabled || busy" @click="() => onApprove().catch(() => {})">
-        Approve MeBTC
-      </Button>
       <Button :disabled="disabled || busy" @click="() => onStake(amount).catch(() => {})">
         Stake
       </Button>
@@ -104,6 +101,8 @@ const tierLabel = computed(() => {
     </div>
 
     <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
+
+    <div v-if="inputError" style="margin-top:10px;">input: {{ inputError }}</div>
 
     <div v-if="lastTx" class="ui-muted" style="margin-top:10px;">
       tx: {{ lastTx }}
