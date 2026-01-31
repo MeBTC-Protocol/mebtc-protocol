@@ -1,12 +1,29 @@
 import { computed, ref, watch } from 'vue'
 
-const themes = ['neutral', 'retro'] as const
-type Theme = (typeof themes)[number]
+const themeOptions = [
+  { id: 'neutral', label: 'Nordic Minimal' },
+  { id: 'neo-brutal', label: 'Neo-Brutal' },
+  { id: 'dark-steel', label: 'Fintech Dark Steel' },
+  { id: 'retro', label: 'Retro Classic' },
+  { id: 'retro-terminal', label: 'Retro Terminal' },
+  { id: 'papercraft', label: 'Papercraft' },
+  { id: 'data-viz', label: 'Data-Viz Focus' },
+  { id: 'warm-clay', label: 'Warm Clay' },
+  { id: 'oceanic', label: 'Oceanic' }
+] as const
 
-function getInitialTheme(): Theme {
+type Theme = (typeof themeOptions)[number]['id']
+
+const themeLabelMap = new Map(themeOptions.map((option) => [option.id, option.label]))
+const defaultTheme: Theme = 'neutral'
+
+function isTheme(value: string | null): value is Theme {
+  return themeOptions.some((option) => option.id === value)
+}
+
+export function getInitialTheme(): Theme {
   const saved = localStorage.getItem('ui-theme')
-  if (saved === 'neutral' || saved === 'retro') return saved
-  return 'neutral'
+  return isTheme(saved) ? saved : defaultTheme
 }
 
 const theme = ref<Theme>(getInitialTheme())
@@ -16,16 +33,17 @@ watch(theme, (next) => {
   localStorage.setItem('ui-theme', next)
 }, { immediate: true })
 
-const themeLabel = computed(() => (theme.value === 'neutral' ? 'Neutral' : 'Retro'))
+const themeLabel = computed(() => themeLabelMap.get(theme.value) ?? 'Theme')
 
-function toggleTheme() {
-  theme.value = theme.value === 'neutral' ? 'retro' : 'neutral'
+function setTheme(next: Theme) {
+  theme.value = next
 }
 
 export function useTheme() {
   return {
     theme,
     themeLabel,
-    toggleTheme
+    themes: themeOptions,
+    setTheme
   }
 }

@@ -1,5 +1,37 @@
-# Vue 3 + TypeScript + Vite
+# MeBTC Frontend (Vue + Vite)
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Ziel: Das Frontend lokal starten (Windows, Linux, macOS).
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## Option A: Dev-Server (empfohlen, mit Hot Reload)
+Voraussetzungen: Node.js 18+ (empfohlen 20 LTS) und npm.
+
+Schritte (alle OS):
+1) In diesen Ordner wechseln: `cd frontend-vue`
+2) Env Datei anlegen:
+   - Windows PowerShell: `Copy-Item .env.example .env`
+   - Windows CMD: `copy .env.example .env`
+   - macOS/Linux: `cp .env.example .env`
+3) `VITE_REOWN_PROJECT_ID` in `.env` setzen
+4) Dependencies installieren: `npm install`
+5) Dev-Server starten: `npm run dev`
+6) Browser: `http://localhost:5173`
+
+## Option B: Build + Preview (nahe an Production)
+Hinweis: Wenn `VITE_FUJI_RPC_URL` in `.env` relativ ist (z.B. `/fuji`),
+funktioniert das nur im Dev-Server (Proxy). Fuer Preview/Build bitte die
+absolute URL eintragen.
+
+1) `npm run build`
+2) `npm run preview`
+3) Browser: `http://localhost:4173`
+
+## Option C: Docker (kein Node auf dem Host)
+Voraussetzung: Docker Desktop (Windows/macOS) oder Docker Engine (Linux).
+
+1) `cd frontend-vue`
+2) `.env` wie oben anlegen und `VITE_REOWN_PROJECT_ID` setzen
+3) `docker compose up`
+4) Browser: `http://localhost:5173`
+
+## Env Variablen
+Siehe `.env.example`.

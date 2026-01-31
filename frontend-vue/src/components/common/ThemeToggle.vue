@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import Button from './Button.vue'
 import { useTheme } from '../../composables/useTheme'
 
-const { themeLabel, toggleTheme } = useTheme()
+const { theme, themes } = useTheme()
 </script>
 
 <template>
-  <Button size="sm" variant="ghost" @click="toggleTheme">
-    Theme: {{ themeLabel }}
-  </Button>
+  <div class="ui-row">
+    <span class="ui-subtitle" style="margin:0;">Theme</span>
+    <select v-model="theme" class="ui-select" style="min-width:180px;" aria-label="Theme">
+      <option v-for="option in themes" :key="option.id" :value="option.id">
+        {{ option.label }}
+      </option>
+    </select>
+  </div>
 </template>

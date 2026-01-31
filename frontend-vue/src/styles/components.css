@@ -159,7 +159,7 @@
     gap: 8px;
     padding: 6px 8px;
     border-radius: var(--ui-radius-sm);
-    background: rgba(31, 111, 235, 0.12);
+    background: rgba(var(--ui-accent-rgb), 0.12);
     border: var(--ui-border-width) solid var(--ui-border);
   }
 
@@ -216,7 +216,7 @@
 
   .ui-input:focus,
   .ui-select:focus {
-    outline: 2px solid rgba(31, 111, 235, 0.2);
+    outline: 2px solid rgba(var(--ui-accent-rgb), 0.2);
     border-color: var(--ui-accent);
   }
 
@@ -241,7 +241,7 @@
   }
 
   .ui-table tr:hover td {
-    background: rgba(31, 111, 235, 0.04);
+    background: rgba(var(--ui-accent-rgb), 0.04);
   }
 
   .btn {
@@ -256,7 +256,7 @@
     letter-spacing: 0.2px;
     font-family: var(--ui-font-display);
     color: var(--ui-text);
-    background: linear-gradient(180deg, #ffffff, var(--ui-panel-2));
+    background: linear-gradient(180deg, var(--ui-panel), var(--ui-panel-2));
     box-shadow: 0 10px 18px -16px var(--ui-shadow-color);
     transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   }
@@ -264,7 +264,7 @@
   .btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 12px 24px -12px var(--ui-shadow-color);
-    border-color: rgba(31, 111, 235, 0.35);
+    border-color: rgba(var(--ui-accent-rgb), 0.35);
   }
 
   .btn:active {
@@ -292,7 +292,7 @@
   }
 
   .btn-ghost {
-    background: linear-gradient(180deg, #ffffff, var(--ui-panel-2));
+    background: linear-gradient(180deg, var(--ui-panel), var(--ui-panel-2));
   }
 
   .btn-disabled {
@@ -303,7 +303,7 @@
   .card {
     border-radius: var(--ui-radius-md);
     border: var(--ui-border-width) solid var(--ui-card-border);
-    background: linear-gradient(180deg, #ffffff 0%, var(--ui-panel-2) 100%);
+    background: linear-gradient(180deg, var(--ui-panel) 0%, var(--ui-panel-2) 100%);
     padding: 16px;
     box-shadow:
       0 18px 30px -24px var(--ui-shadow-color),
@@ -332,7 +332,7 @@
     margin-bottom: 12px;
     font-family: var(--ui-font-display);
     padding-bottom: 10px;
-    border-bottom: var(--ui-border-width) solid rgba(31, 111, 235, 0.25);
+    border-bottom: var(--ui-border-width) solid rgba(var(--ui-accent-rgb), 0.25);
     text-transform: uppercase;
   }
 
@@ -393,7 +393,7 @@
   .miner-card {
     border-radius: var(--ui-radius-md);
     border: var(--ui-border-width) solid var(--ui-border);
-    background: linear-gradient(180deg, #ffffff, var(--ui-panel-2));
+    background: linear-gradient(180deg, var(--ui-panel), var(--ui-panel-2));
     padding: 10px;
     box-shadow: 0 16px 24px -20px var(--ui-shadow-color);
     position: relative;

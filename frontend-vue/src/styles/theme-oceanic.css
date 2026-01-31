@@ -1,0 +1,30 @@
+:root[data-theme='oceanic'] {
+  --ui-font-display: 'Space Grotesk', sans-serif;
+  --ui-font-body: 'Work Sans', sans-serif;
+  --ui-radius-sm: 8px;
+  --ui-radius-md: 12px;
+  --ui-radius-lg: 18px;
+  --ui-border-width: 1px;
+  --ui-border-width-strong: 2px;
+  --ui-shadow-y: 10px;
+  --ui-shadow-color: rgba(3, 9, 18, 0.6);
+  --ui-accent-rgb: 79 209 197;
+  --ui-accent-2-rgb: 96 165 250;
+  --ui-bg: #0c1b2a;
+  --ui-bg-2: #12273b;
+  --ui-panel: #132438;
+  --ui-panel-2: #1a3148;
+  --ui-text: #e3f2ff;
+  --ui-text-muted: #9cb4c8;
+  --ui-border: #223b53;
+  --ui-border-strong: #2f4a66;
+  --ui-accent: #4fd1c5;
+  --ui-accent-2: #60a5fa;
+  --ui-accent-3: #34d399;
+  --ui-warning: #fbbf24;
+  --ui-success: #34d399;
+  --ui-grid: rgba(var(--ui-accent-rgb), 0.07);
+  --ui-card-border: rgba(var(--ui-accent-rgb), 0.32);
+  --ui-card-glow: rgba(var(--ui-accent-rgb), 0.18);
+  --ui-pill-bg: rgba(var(--ui-accent-rgb), 0.12);
+}

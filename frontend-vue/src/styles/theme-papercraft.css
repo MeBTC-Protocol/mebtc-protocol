@@ -1,0 +1,30 @@
+:root[data-theme='papercraft'] {
+  --ui-font-display: 'Fraunces', serif;
+  --ui-font-body: 'Work Sans', sans-serif;
+  --ui-radius-sm: 10px;
+  --ui-radius-md: 16px;
+  --ui-radius-lg: 22px;
+  --ui-border-width: 1px;
+  --ui-border-width-strong: 2px;
+  --ui-shadow-y: 10px;
+  --ui-shadow-color: rgba(74, 55, 43, 0.16);
+  --ui-accent-rgb: 217 119 108;
+  --ui-accent-2-rgb: 156 107 78;
+  --ui-bg: #f6efe6;
+  --ui-bg-2: #efe4d8;
+  --ui-panel: #fff9f1;
+  --ui-panel-2: #f7efe6;
+  --ui-text: #3a2f2a;
+  --ui-text-muted: #7a6459;
+  --ui-border: #d2c2b5;
+  --ui-border-strong: #c3b0a2;
+  --ui-accent: #d9776c;
+  --ui-accent-2: #9c6b4e;
+  --ui-accent-3: #5fa38b;
+  --ui-warning: #d39b2a;
+  --ui-success: #5fa38b;
+  --ui-grid: rgba(var(--ui-accent-rgb), 0.06);
+  --ui-card-border: rgba(var(--ui-accent-rgb), 0.3);
+  --ui-card-glow: rgba(var(--ui-accent-rgb), 0.15);
+  --ui-pill-bg: rgba(var(--ui-accent-rgb), 0.1);
+}
