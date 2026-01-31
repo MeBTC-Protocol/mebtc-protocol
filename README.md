@@ -1,6 +1,6 @@
 ## MeBTC Contracts (Foundry)
 
-Minimal docs for the MeBTC contracts and scripts. Frontend docs live elsewhere.
+Minimal docs for the MeBTC contracts and scripts.
 
 Foundry consists of:
 
@@ -63,6 +63,42 @@ $ cast <subcommand>
 $ forge --help
 $ anvil --help
 $ cast --help
+```
+
+## Frontend (local)
+
+The Vue frontend lives in `frontend-vue/`.
+
+### Setup
+
+```shell
+$ cd frontend-vue
+$ npm install
+```
+
+### Run dev server
+
+```shell
+$ npm run dev
+```
+
+Open `http://localhost:5173` in your browser.
+
+### Environment
+
+The frontend reads env vars from `frontend-vue/.env`:
+
+- `VITE_REOWN_PROJECT_ID` (wallet appkit)
+- `VITE_APP_URL` (local app URL)
+- `VITE_FUJI_RPC_URL` (defaults to `/fuji` for the Vite proxy)
+
+The dev server proxies `/fuji` to the Fuji RPC. See `frontend-vue/vite.config.ts` if you need to adjust the target or path.
+
+### Build / preview
+
+```shell
+$ npm run build
+$ npm run preview
 ```
 
 ## Scripts
