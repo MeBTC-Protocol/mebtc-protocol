@@ -9,6 +9,11 @@ Run all tests:
 ```
 forge test
 ```
+If you see a signature cache permission warning, run with a local HOME:
+```
+mkdir -p cache/home/.foundry/cache
+HOME=./cache/home forge test
+```
 
 Run tests with more output:
 ```

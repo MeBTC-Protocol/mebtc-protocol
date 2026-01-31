@@ -18,12 +18,29 @@ Foundry ist primaer. Hardhat ist nur optional, wenn ein konkreter Task JS/TS-Too
    - End-to-End UI-Flows, Wallet-Handling und Deployment-Validierung.
 
 Primaer: Lokales Anvil + Mainnet-Fork. Sekundaer: Fuji.
+Hinweis: "Mainnet-Fork" = Avalanche C-Chain Mainnet als lokaler Fork.
+
+Kennzeichnung:
+- [Anvil] lokal ohne Fork
+- [Fork] Anvil Mainnet-Fork (Avalanche C-Chain)
+- [Fuji] Testnet
+- [Anvil/Fork] geht in beiden
+
+Uebersicht (Anvil vs. Fork vs. Fuji):
+
+| Thema                         | Anvil | Fork | Fuji |
+|------------------------------|:-----:|:----:|:----:|
+| Unit/Integration/Fuzz        |   x   |      |      |
+| Tokenomics/Halving Simulation|   x   |  x   |      |
+| Performance/Load             |   x   |  x   |      |
+| Frontend E2E (Wallet/UX)     |       |      |  x   |
+| Realer RPC/Netzwerk-Fehler   |       |      |  x   |
 
 ## Mainnet-Fork Setup (Anvil)
-Ziel: Realistische Tests mit echtem Mainnet-State (Liquidity, Oracles, Fees).
+Ziel: Realistische Tests mit echtem Mainnet-State (Avalanche C-Chain) fuer Liquidity, Oracles, Fees.
 
 Schritte:
-1) RPC-URL fuer Mainnet bereitstellen (z. B. Infura/Alchemy).
+1) RPC-URL fuer Avalanche C-Chain Mainnet bereitstellen (z. B. oeffentlicher RPC oder eigener Node).
 2) Anvil Fork starten:
    - anvil --fork-url <RPC_URL> --fork-block-number <BLOCK>
 3) In Foundry Tests die Fork nutzen:
@@ -34,6 +51,32 @@ Schritte:
 Hinweise:
 - Fork-Block fixieren, damit TWAP/Pool-Daten stabil bleiben.
 - Keine echten Keys nutzen; nur Test-Schluessel.
+- Chain IDs: Mainnet 43114, Fuji 43113.
+
+## Mainnet-Fork E2E Varianten (Skizze)
+- E2E-Claim/Upgrade: reale LP/Oracle-Preise, Fee-Split mit echten TWAP-Daten pruefen.
+- Stress via Batch-Claims: gleiche Wallet, viele Miner, Gas/Throughput messen.
+- Oracle-Stale: Fork-Block alt -> TWAP nicht ready; UI/Tx sollen sauber failen.
+- Liquidity-Effekt: Add Liquidity (wenn moeglich) und Einfluss auf TWAP/Stats beobachten.
+- Replay-Realismus: gleicher Fork-Block fuer reproduzierbare Reports.
+
+### Mainnet-Fork E2E Ablaufplan (Schritt fuer Schritt)
+1) Fork starten (fixer Block): Anvil mit --fork-url und --fork-block-number.
+2) Deploy der Contracts auf Fork oder use existing, dann Adressen notieren.
+3) Miner kaufen: Approve -> Buy -> Tx ok; Vault/Stats aktualisieren.
+4) Claim testen: vor Slot -> revert; nach Slot -> Reward/Fees korrekt.
+5) Upgrade testen: Pending sichtbar -> Claim -> aktive Werte aktualisiert.
+6) claimWithMebtc: TWAP ready, price > 0; Fee-Split korrekt.
+7) Oracle-Stale: Fork-Block alt oder TWAP nicht ready -> Tx muss failen.
+8) Batch-Claim: viele Miner, Gas/Throughput messen.
+9) Bericht: Blocknummer, Tx-Hashes, beobachtete Werte dokumentieren.
+
+### Standardwerte (E2E)
+- Buy: 1 Miner (ModelId 1)
+- Claim: nach 2 Slots
+- Stake: 10_000 MeBTC
+- claimWithMebtc: 30% Fee-Split
+- Liquidity: 1_000 USDC + entsprechendes MeBTC
 
 ## Tooling
 - Foundry: forge test, forge snapshot, forge fuzz/invariants
@@ -75,7 +118,7 @@ Hinweise:
 ## Testmatrix
 
 ### A) Smart Contracts - Unit
-Wo: Lokales Anvil + Foundry
+Wo: Lokales Anvil + Foundry [Anvil]
 Fokus:
 - Access Control (Owner/Manager)
 - Token-Decimals Enforcement (USDC-like 6 Decimals)
@@ -106,7 +149,7 @@ Testskizzen pro Contract (Foundry):
   - test_twap_update_window()
 
 ### B) Smart Contracts - Integration
-Wo: Lokales Anvil + Foundry
+Wo: Lokales Anvil + Foundry [Anvil]
 Flows:
 - buy miner -> claim -> upgrade -> claim
 - stake -> lock -> unstake (early revert)
@@ -125,7 +168,7 @@ Hinweise:
 - Vault-Balances und Rewards mit preview-Outputs abgleichen.
 
 ### C) Tokenomics & Halving
-Wo: Lokales Anvil + Mainnet-Fork
+Wo: Lokales Anvil + Mainnet-Fork [Anvil/Fork]
 Checks:
 - Halving-Grenzzeitpunkte (before/after)
 - Emissionssumme nach N Intervallen
@@ -146,14 +189,14 @@ Erweiterte Tokenomics-Checks:
 - Regression: Preview/Claim identisch bei gleicher Zeit; keine Diffs nach mehrfachen preview Calls.
 
 ### D) Oracle & TWAP
-Wo: Mainnet-Fork
+Wo: Mainnet-Fork [Fork]
 Checks:
 - TWAP-Readiness Window; Stale-Data Handling
 - Price-Manipulation Scenarios (low liquidity)
 - Update-Timing bei Liquidity-Changes
 
 ### E) Security Scenarios
-Wo: Lokales Anvil + Mainnet-Fork
+Wo: Lokales Anvil + Mainnet-Fork [Anvil/Fork]
 Threats:
 - Reentrancy-Attempts auf allen externen Calls
 - Approval-Abuse / Allowance-Drains
@@ -169,7 +212,7 @@ Konkrete Tests (Security):
 - Role Abuse: nur Owner darf setPayToken; nicht owner -> revert.
 
 ### F) Performance & Load
-Wo: Lokales Anvil + Mainnet-Fork
+Wo: Lokales Anvil + Mainnet-Fork [Anvil/Fork]
 Checks:
 - Gas pro Operation (claim/upgrade/stake/executeEpoch)
 - Batch-Claim Worst-Case mit vielen Minern
@@ -186,7 +229,7 @@ Konkrete Tests (Performance/Load):
 - Durchsatzgrenze: claims pro Minute basierend auf CLAIM_INTERVAL und Blockgas.
 
 ### G) Frontend Security & UX
-Wo: Fuji
+Wo: Fuji [Fuji]
 Checks:
 - Wallet connect, Chain-Mismatch Handling
 - Approve/buy/claim/upgrade/stake Flows
@@ -201,9 +244,22 @@ Konkrete Tests (Frontend):
 - Input Hardening: keine XSS in Inputs/URLs/Tx-Notizen.
 - Edge Balances: 0 USDC / 0 MeBTC / max approvals.
 - Timing: Claim vor Slot -> UI zeigt "noch nicht" statt tx.
+E2E Checkliste (Fuji, End-to-End):
+- Wallet connect: verbinden, disconnect, reconnect; persistierter Status korrekt.
+- Netzwerkwechsel: falsches Netzwerk -> klare Meldung; nach Switch korrekt weiter.
+- Buy Flow: Approve -> Buy -> Receipt -> UI-Stats/Balances aktualisiert.
+- Claim Flow: vor Slot blockiert; nach Slot Claim ok; Stats aktualisiert.
+- Upgrade Flow: Upgrade anstossen; Pending sichtbar; nach Claim aktive Werte sichtbar.
+- Stake Flow: Approve -> Stake -> Lock-Timer sichtbar; Unstake vor Ablauf blockiert.
+- claimWithMebtc: Fee-Split angezeigt; MeBTC/USDC Balances korrekt; Vaults aktualisiert.
+- Liquidity: Approve -> Add Liquidity -> Pool-Reserven in Stats sichtbar.
+- TWAP/Epoch: Update/Execute (falls UI) -> Status-Update sichtbar.
+- Error Handling: Tx reject, RPC error, Timeout -> UI zeigt klare Fehler.
+- State Refresh: Page reload nach Tx -> korrekte Daten (keine stale cache).
+Hinweis: Detail-Checkliste und Pass/Fail in `TEST_ABLAUF_FUJI.md`.
 
 ### H) Regression & Monitoring
-Wo: CI + Fuji
+Wo: CI + Fuji [Fuji]
 Checks:
 - forge test + invariant suite gruen
 - gas snapshot diffs reviewen
