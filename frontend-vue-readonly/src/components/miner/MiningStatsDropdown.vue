@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { formatUnits } from 'ethers'
 import { TOKENS } from '../../contracts/addresses'
+import ErrorPopup from '../common/ErrorPopup.vue'
+import { useErrorPopup } from '../../composables/useErrorPopup'
 
-defineProps<{
+const props = defineProps<{
   totalMined: bigint
   totalStaked: bigint
   feeVaultMebtc: bigint
@@ -17,6 +19,8 @@ defineProps<{
   loading: boolean
   error: string
 }>()
+
+const { open, help, close } = useErrorPopup(() => props.error, 'Mining Stats')
 
 function formatTs(ts: bigint | null) {
   if (!ts) return '-'
@@ -100,7 +104,14 @@ function formatRemaining(seconds: number | null) {
             Pool USDC:
             <b>{{ formatUnits(poolUsdc, TOKENS.usdc.decimals) }}</b>
           </div>
-          <div v-if="error" style="color:#b00;">error: {{ error }}</div>
+          <ErrorPopup
+            :open="open"
+            :title="help.title"
+            :message="help.message"
+            :steps="help.steps"
+            :raw="help.raw"
+            :onClose="close"
+          />
         </div>
       </div>
     </details>

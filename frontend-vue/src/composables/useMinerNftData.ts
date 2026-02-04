@@ -15,7 +15,7 @@ export type MinerDataState =
   | { status: 'error'; error: string }
 
 export function useMinerNftData(getTokenIds: () => bigint[]) {
-  const { readProvider } = useWallet()
+  const { readProvider, hasWalletProvider, browserProvider, onChain } = useWallet()
   const states = ref<Record<string, MinerDataState>>({})
   const { refreshKey } = useMinerStatsRefresh()
   const lastRefresh = ref(refreshKey.value)
@@ -34,6 +34,15 @@ export function useMinerNftData(getTokenIds: () => bigint[]) {
     }
 
     const miner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, readProvider.value)
+    let fallbackMiner: Contract | null = null
+
+    function getFallbackMiner() {
+      if (fallbackMiner) return fallbackMiner
+      const bp = browserProvider.value
+      if (!hasWalletProvider.value || !onChain.value || !bp) return null
+      fallbackMiner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, bp)
+      return fallbackMiner
+    }
 
     await Promise.all(
       ids.map(async (id) => {
@@ -45,7 +54,14 @@ export function useMinerNftData(getTokenIds: () => bigint[]) {
         states.value = { ...states.value, [key]: { status: 'loading' } }
 
         try {
-          const res = await miner.getMinerData(id)
+          let res: any
+          try {
+            res = await miner.getMinerData(id)
+          } catch {
+            const fm = getFallbackMiner()
+            if (!fm) throw new Error('getMinerData failed (no fallback provider)')
+            res = await fm.getMinerData(id)
+          }
           const effHash = res[0] as bigint
           const effPowerWatt = res[1] as bigint
           const createdAt = res[2] as bigint

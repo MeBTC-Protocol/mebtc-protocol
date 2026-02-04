@@ -9,7 +9,7 @@ const ERC20_ABI = [
 ]
 
 export function useMebtcUpgradeAllowance() {
-  const { address, readProvider } = useWallet()
+  const { address, readProvider, hasWalletProvider, browserProvider, onChain } = useWallet()
   const { refreshKey } = useGlobalRefresh()
   let requestId = 0
 
@@ -27,11 +27,21 @@ export function useMebtcUpgradeAllowance() {
 
     loading.value = true
     try {
-      const p = readProvider.value
-      const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p)
-      const res = await mebtc.allowance(a, ADDRESSES.minerNft)
-      if (rid !== requestId) return
-      allowance.value = res as bigint
+      const readAllowance = async (p: any) => {
+        const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p)
+        const res = await mebtc.allowance(a, ADDRESSES.minerNft)
+        if (rid !== requestId) return
+        allowance.value = res as bigint
+      }
+
+      try {
+        await readAllowance(readProvider.value)
+      } catch {
+        const bp = browserProvider.value
+        if (hasWalletProvider.value && onChain.value && bp) {
+          await readAllowance(bp)
+        }
+      }
     } finally {
       if (rid === requestId) {
         loading.value = false

@@ -2,6 +2,7 @@
 import { computed, ref } from "vue"
 import Card from "../common/Card.vue"
 import Button from "../common/Button.vue"
+import ErrorPopupInline from "../common/ErrorPopupInline.vue"
 import { formatUnits } from "ethers"
 import { TOKENS } from "../../contracts/addresses"
 
@@ -28,6 +29,7 @@ const mebtcShareBps = computed(() => {
   const p = Math.max(0, Math.min(30, Math.floor(mebtcSharePercent.value || 0)))
   return p * 100
 })
+
 
 function toggle(id: bigint, checked: boolean) {
   const key = id.toString()
@@ -69,7 +71,7 @@ function toggle(id: bigint, checked: boolean) {
       </div>
     </div>
 
-    <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
+    <ErrorPopupInline :error="error" context="Claim" />
 
     <div v-if="lastApproveTx" class="ui-muted" style="margin-top:10px;">
       approve tx: {{ lastApproveTx }}
@@ -98,7 +100,7 @@ function toggle(id: bigint, checked: boolean) {
                 @change="toggle(id, ($event.target as HTMLInputElement).checked)"
               />
             </td>
-            <td>#{{ id.toString() }}</td>
+            <td><span class="token-id-number">#{{ id.toString() }}</span></td>
             <td>
               <span v-if="previewMap.get(id.toString())">
                 {{ formatUnits(previewMap.get(id.toString())!.reward, TOKENS.mebtc.decimals) }}

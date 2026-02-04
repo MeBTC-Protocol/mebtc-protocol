@@ -85,15 +85,6 @@ function errorFor(id: string) {
   return st && st.status === 'error' ? st.error : ''
 }
 
-function upgradeLabelFor(id: string) {
-  const st = upgradeStates.value[id]
-  if (!st || st.status === 'idle') return ''
-  if (st.status === 'loading') return 'loading upgrades…'
-  if (st.status === 'error') return `upgrade error: ${st.error}`
-  const powerPending = st.powerPendingSteps > 0 ? ` (+${st.powerPendingSteps} pending)` : ''
-  const hashPending = st.hashPendingSteps > 0 ? ` (+${st.hashPendingSteps} pending)` : ''
-  return `upgrade:Power ${st.powerActiveSteps}/${st.maxSteps}${powerPending} |Hash ${st.hashActiveSteps}/${st.maxSteps}${hashPending}`
-}
 </script>
 
 <template>
@@ -141,7 +132,28 @@ function upgradeLabelFor(id: string) {
             hash: {{ displayHash(id.toString()) }} | power: {{ displayPower(id.toString()) }} W{{ bonusInline() }}
           </span>
         </div>
-        <div>{{ upgradeLabelFor(id.toString()) }}</div>
+        <div>
+          <span v-if="upgradeStates[id.toString()]?.status === 'loading'">loading upgrades…</span>
+          <span v-else-if="upgradeStates[id.toString()]?.status === 'error'">
+            upgrade error: {{ upgradeStates[id.toString()]?.error }}
+          </span>
+          <span v-else-if="upgradeStates[id.toString()]?.status === 'ok'">
+            upgrade:Power {{ upgradeStates[id.toString()]?.powerActiveSteps }}/{{ upgradeStates[id.toString()]?.maxSteps }}
+            <span
+              v-if="(upgradeStates[id.toString()]?.powerPendingSteps ?? 0) > 0"
+              class="upgrade-pending"
+            >
+              (+{{ upgradeStates[id.toString()]?.powerPendingSteps }} pending)
+            </span>
+            |Hash {{ upgradeStates[id.toString()]?.hashActiveSteps }}/{{ upgradeStates[id.toString()]?.maxSteps }}
+            <span
+              v-if="(upgradeStates[id.toString()]?.hashPendingSteps ?? 0) > 0"
+              class="upgrade-pending"
+            >
+              (+{{ upgradeStates[id.toString()]?.hashPendingSteps }} pending)
+            </span>
+          </span>
+        </div>
       </div>
     </div>
   </div>

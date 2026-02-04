@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import Card from './Card.vue'
 import Button from './Button.vue'
+import ErrorPopup from './ErrorPopup.vue'
+import { useErrorPopup } from '../../composables/useErrorPopup'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   tokenSymbol: string
   spenderLabel: string
@@ -15,6 +17,8 @@ defineProps<{
   onApproveMax: () => void
   onCancel: () => void
 }>()
+
+const { open: errorOpen, help: errorHelp, close: closeError } = useErrorPopup(() => props.error, 'Approval')
 </script>
 
 <template>
@@ -60,7 +64,14 @@ defineProps<{
           </Button>
         </div>
 
-        <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
+        <ErrorPopup
+          :open="errorOpen"
+          :title="errorHelp.title"
+          :message="errorHelp.message"
+          :steps="errorHelp.steps"
+          :raw="errorHelp.raw"
+          :onClose="closeError"
+        />
       </Card>
     </div>
   </div>

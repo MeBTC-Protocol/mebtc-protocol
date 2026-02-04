@@ -18,6 +18,10 @@ const MINER_NFT_ABI = [
   'function nextTokenId() view returns (uint256)'
 ]
 
+const MANAGER_ABI = [
+  'function totalEffectiveHash() view returns (uint256)'
+]
+
 const PAIR_ABI = [
   'function token0() view returns (address)',
   'function token1() view returns (address)',
@@ -36,6 +40,7 @@ export function useMiningStats(firstMinerId: bigint = 1n) {
   const demandVaultUsdc = ref<bigint>(0n)
   const poolMebtc = ref<bigint>(0n)
   const poolUsdc = ref<bigint>(0n)
+  const totalEffectiveHash = ref<bigint>(0n)
   const loading = ref(false)
   const error = ref('')
 
@@ -78,9 +83,10 @@ export function useMiningStats(firstMinerId: bigint = 1n) {
       const mebtc = new Contract(ADDRESSES.mebtc, ME_BTC_ABI, p)
       const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p)
       const miner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, p)
+      const manager = new Contract(ADDRESSES.miningManager, MANAGER_ABI, p)
       const pair = new Contract(ADDRESSES.pair, PAIR_ABI, p)
 
-      const [supply, data, nextId, staked, feeMebtc, demandUsdc, token0, reserves] = await Promise.all([
+      const [supply, data, nextId, staked, feeMebtc, demandUsdc, token0, reserves, totalHash] = await Promise.all([
         mebtc.totalSupply(),
         miner.getMinerData(firstMinerId),
         miner.nextTokenId(),
@@ -88,7 +94,8 @@ export function useMiningStats(firstMinerId: bigint = 1n) {
         mebtc.balanceOf(ADDRESSES.feeVaultMeBTC),
         usdc.balanceOf(ADDRESSES.demandVault),
         pair.token0(),
-        pair.getReserves()
+        pair.getReserves(),
+        manager.totalEffectiveHash()
       ])
 
       totalMined.value = supply as bigint
@@ -98,6 +105,7 @@ export function useMiningStats(firstMinerId: bigint = 1n) {
       totalStaked.value = staked as bigint
       feeVaultMebtc.value = feeMebtc as bigint
       demandVaultUsdc.value = demandUsdc as bigint
+      totalEffectiveHash.value = totalHash as bigint
 
       const r0 = reserves?.[0] as bigint
       const r1 = reserves?.[1] as bigint
@@ -122,6 +130,7 @@ export function useMiningStats(firstMinerId: bigint = 1n) {
     demandVaultUsdc,
     poolMebtc,
     poolUsdc,
+    totalEffectiveHash,
     soldMiners,
     firstMinerCreatedAt,
     intervalsSinceFirst,

@@ -26,7 +26,7 @@ export type MinerUpgradeState =
   | { status: 'error'; error: string }
 
 export function useMinerUpgradeStates(getTokenIds: () => bigint[]) {
-  const { readProvider } = useWallet()
+  const { readProvider, hasWalletProvider, browserProvider, onChain } = useWallet()
   const states = ref<Record<string, MinerUpgradeState>>({})
 
   watchEffect(async () => {
@@ -34,6 +34,15 @@ export function useMinerUpgradeStates(getTokenIds: () => bigint[]) {
     if (ids.length === 0) return
 
     const miner = new Contract(ADDRESSES.minerNft, MINER_STATE_ABI, readProvider.value)
+    let fallbackMiner: Contract | null = null
+
+    function getFallbackMiner() {
+      if (fallbackMiner) return fallbackMiner
+      const bp = browserProvider.value
+      if (!hasWalletProvider.value || !onChain.value || !bp) return null
+      fallbackMiner = new Contract(ADDRESSES.minerNft, MINER_STATE_ABI, bp)
+      return fallbackMiner
+    }
 
     await Promise.all(
       ids.map(async (id) => {
@@ -45,7 +54,14 @@ export function useMinerUpgradeStates(getTokenIds: () => bigint[]) {
         states.value = { ...states.value, [key]: { status: 'loading' } }
 
         try {
-          const res = await miner.getMinerState(id)
+          let res: any
+          try {
+            res = await miner.getMinerState(id)
+          } catch {
+            const fm = getFallbackMiner()
+            if (!fm) throw new Error('getMinerState failed (no fallback provider)')
+            res = await fm.getMinerState(id)
+          }
           const modelId = Number(res[0])
           const powerUpgradeBps = Number(res[1])
           const hashUpgradeBps = Number(res[2])

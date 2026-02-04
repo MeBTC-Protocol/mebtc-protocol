@@ -1,0 +1,11 @@
+{
+  "name": "RigMiner",
+  "description": "Entry-level GPU-style miner in the MeBTC mining lineup.",
+  "image": "ipfs://bafybeihyhpuekhaolk5blmhnasstjesspa5gcvbrvx3y6donmuylllz2ua/RigMiner.png",
+  "attributes": [
+    { "trait_type": "Model", "value": "RigMiner" },
+    { "trait_type": "Hashrate (TH/s)", "value": 0.5 },
+    { "trait_type": "Power (W)", "value": 200 },
+    { "trait_type": "Base Price (USD)", "value": 24 }
+  ]
+}

@@ -3,8 +3,10 @@ import { computed, ref } from 'vue'
 import { formatUnits } from 'ethers'
 import Card from '../common/Card.vue'
 import Button from '../common/Button.vue'
+import ErrorPopup from '../common/ErrorPopup.vue'
 import { useMinerModels } from '../../composables/useMinerModels'
 import { useMinerUpgradeStates } from '../../composables/useMinerUpgradeStates'
+import { useErrorPopup } from '../../composables/useErrorPopup'
 
 const props = defineProps<{
   disabled: boolean
@@ -87,13 +89,20 @@ const upgradeState = computed(() => {
   return upgradeStates.value[id.toString()] ?? ({ status: 'loading' } as const)
 })
 
-const upgradeStepsText = computed(() => {
-  if (upgradeState.value.status !== 'ok') return ''
-  const st = upgradeState.value
-  const powerPending = st.powerPendingSteps > 0 ? ` (+${st.powerPendingSteps} pending)` : ''
-  const hashPending = st.hashPendingSteps > 0 ? ` (+${st.hashPendingSteps} pending)` : ''
-  return `Power: ${st.powerActiveSteps}/${st.maxSteps}${powerPending} | Hash: ${st.hashActiveSteps}/${st.maxSteps}${hashPending}`
-})
+const {
+  open: modelErrorOpen,
+  help: modelErrorHelp,
+  close: closeModelError
+} = useErrorPopup(() => modelErr.value, 'Modelle laden')
+
+const {
+  open: upgradeErrorOpen,
+  help: upgradeErrorHelp,
+  close: closeUpgradeError
+} = useErrorPopup(
+  () => (upgradeState.value.status === 'error' ? upgradeState.value.error : ''),
+  'Upgrade Status'
+)
 
 const upgradeNextCostText = computed(() => {
   if (upgradeState.value.status !== 'ok') return ''
@@ -183,7 +192,16 @@ function openExplorer(address: string) {
 <template>
   <Card title="Miner pricing / Buy & Upgrade (Read-only)">
     <div v-if="loading">loading models…</div>
-    <div v-else-if="modelErr">error loading models: {{ modelErr }}</div>
+    <div v-else-if="modelErr">
+      <ErrorPopup
+        :open="modelErrorOpen"
+        :title="modelErrorHelp.title"
+        :message="modelErrorHelp.message"
+        :steps="modelErrorHelp.steps"
+        :raw="modelErrorHelp.raw"
+        :onClose="closeModelError"
+      />
+    </div>
 
     <div v-else>
       <div class="ui-row">
@@ -279,7 +297,7 @@ function openExplorer(address: string) {
       <div class="ui-section">
         <div class="ui-row ui-subtitle">
           <span>Upgrade miner</span>
-          <span class="ui-muted" style="font-size:11px;">
+          <span class="ui-muted upgrade-note" style="font-size:11px;">
             (upgrades erst nach erfolgtem claim aktiv)
           </span>
         </div>
@@ -306,9 +324,25 @@ function openExplorer(address: string) {
         </div>
         <div v-if="upgradeTokenId" class="ui-muted" style="margin-top:6px;font-size:12px;">
           <span v-if="upgradeState.status === 'loading'">loading upgrade status…</span>
-          <span v-else-if="upgradeState.status === 'error'">upgrade status error: {{ upgradeState.error }}</span>
+          <ErrorPopup
+            v-else-if="upgradeState.status === 'error'"
+            :open="upgradeErrorOpen"
+            :title="upgradeErrorHelp.title"
+            :message="upgradeErrorHelp.message"
+            :steps="upgradeErrorHelp.steps"
+            :raw="upgradeErrorHelp.raw"
+            :onClose="closeUpgradeError"
+          />
           <span v-else-if="upgradeState.status === 'ok'">
-            model: {{ upgradeState.modelId }} | {{ upgradeStepsText }}
+            model: {{ upgradeState.modelId }} |
+            Power: {{ upgradeState.powerActiveSteps }}/{{ upgradeState.maxSteps }}
+            <span v-if="upgradeState.powerPendingSteps > 0" class="upgrade-pending">
+              (+{{ upgradeState.powerPendingSteps }} pending)
+            </span>
+            | Hash: {{ upgradeState.hashActiveSteps }}/{{ upgradeState.maxSteps }}
+            <span v-if="upgradeState.hashPendingSteps > 0" class="upgrade-pending">
+              (+{{ upgradeState.hashPendingSteps }} pending)
+            </span>
           </span>
         </div>
         <div v-if="upgradeState.status === 'ok' && upgradeNextCostText" class="ui-muted" style="margin-top:4px;font-size:12px;">

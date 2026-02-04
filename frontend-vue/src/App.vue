@@ -58,6 +58,7 @@ const {
   demandVaultUsdc,
   poolMebtc,
   poolUsdc,
+  totalEffectiveHash,
   soldMiners,
   firstMinerCreatedAt,
   intervalsSinceFirst,
@@ -649,6 +650,7 @@ const headerMeta = computed(() => {
                     :demandVaultUsdc="demandVaultUsdc"
                     :poolMebtc="poolMebtc"
                     :poolUsdc="poolUsdc"
+                    :totalEffectiveHash="totalEffectiveHash"
                     :soldMiners="soldMiners"
                     :mebtcDecimals="mebtcDecimals"
                     :firstMinerCreatedAt="firstMinerCreatedAt"

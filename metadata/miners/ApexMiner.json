@@ -1,0 +1,11 @@
+{
+  "name": "ApexMiner",
+  "description": "Top-tier prestige miner with the strongest base hashrate.",
+  "image": "ipfs://bafybeihyhpuekhaolk5blmhnasstjesspa5gcvbrvx3y6donmuylllz2ua/ApexMiner.png",
+  "attributes": [
+    { "trait_type": "Model", "value": "ApexMiner" },
+    { "trait_type": "Hashrate (TH/s)", "value": 270 },
+    { "trait_type": "Power (W)", "value": 3645 },
+    { "trait_type": "Base Price (USD)", "value": 1499 }
+  ]
+}

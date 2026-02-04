@@ -2,8 +2,10 @@
 import { computed, ref } from "vue"
 import Card from "../common/Card.vue"
 import Button from "../common/Button.vue"
+import ErrorPopup from "../common/ErrorPopup.vue"
 import { formatUnits } from "ethers"
 import { TOKENS } from "../../contracts/addresses"
+import { useErrorPopup } from "../../composables/useErrorPopup"
 
 const props = defineProps<{
   disabled: boolean
@@ -28,6 +30,8 @@ const mebtcShareBps = computed(() => {
   const p = Math.max(0, Math.min(30, Math.floor(mebtcSharePercent.value || 0)))
   return p * 100
 })
+
+const { open, help, close } = useErrorPopup(() => props.error, "Claim")
 
 function toggle(id: bigint, checked: boolean) {
   const key = id.toString()
@@ -69,7 +73,14 @@ function toggle(id: bigint, checked: boolean) {
       </div>
     </div>
 
-    <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
+    <ErrorPopup
+      :open="open"
+      :title="help.title"
+      :message="help.message"
+      :steps="help.steps"
+      :raw="help.raw"
+      :onClose="close"
+    />
 
     <div v-if="lastApproveTx" class="ui-muted" style="margin-top:10px;">
       approve tx: {{ lastApproveTx }}

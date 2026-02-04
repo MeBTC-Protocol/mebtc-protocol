@@ -328,6 +328,22 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         return _requestUpgradePower(tokenId, mebtcShareBps);
     }
 
+    function requestUpgradePowerBatch(uint256[] calldata tokenIds)
+        external
+        nonReentrant
+        returns (uint16[] memory newPendingPowerBps)
+    {
+        return _requestUpgradePowerBatch(tokenIds, 0);
+    }
+
+    function requestUpgradePowerBatchWithMebtc(uint256[] calldata tokenIds, uint16 mebtcShareBps)
+        external
+        nonReentrant
+        returns (uint16[] memory newPendingPowerBps)
+    {
+        return _requestUpgradePowerBatch(tokenIds, mebtcShareBps);
+    }
+
     function requestUpgradeHash(uint256 tokenId) external nonReentrant returns (uint16 newPendingHashBps) {
         return _requestUpgradeHash(tokenId, 0);
     }
@@ -338,6 +354,46 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         returns (uint16 newPendingHashBps)
     {
         return _requestUpgradeHash(tokenId, mebtcShareBps);
+    }
+
+    function requestUpgradeHashBatch(uint256[] calldata tokenIds)
+        external
+        nonReentrant
+        returns (uint16[] memory newPendingHashBps)
+    {
+        return _requestUpgradeHashBatch(tokenIds, 0);
+    }
+
+    function requestUpgradeHashBatchWithMebtc(uint256[] calldata tokenIds, uint16 mebtcShareBps)
+        external
+        nonReentrant
+        returns (uint16[] memory newPendingHashBps)
+    {
+        return _requestUpgradeHashBatch(tokenIds, mebtcShareBps);
+    }
+
+    function _requestUpgradePowerBatch(uint256[] calldata tokenIds, uint16 mebtcShareBps)
+        internal
+        returns (uint16[] memory newPendingPowerBps)
+    {
+        require(tokenIds.length > 0, "ids=0");
+        newPendingPowerBps = new uint16[](tokenIds.length);
+
+        for (uint256 i; i < tokenIds.length; i++) {
+            newPendingPowerBps[i] = _requestUpgradePower(tokenIds[i], mebtcShareBps);
+        }
+    }
+
+    function _requestUpgradeHashBatch(uint256[] calldata tokenIds, uint16 mebtcShareBps)
+        internal
+        returns (uint16[] memory newPendingHashBps)
+    {
+        require(tokenIds.length > 0, "ids=0");
+        newPendingHashBps = new uint16[](tokenIds.length);
+
+        for (uint256 i; i < tokenIds.length; i++) {
+            newPendingHashBps[i] = _requestUpgradeHash(tokenIds[i], mebtcShareBps);
+        }
     }
 
     function _requestUpgradePower(uint256 tokenId, uint16 mebtcShareBps) internal returns (uint16 newPendingPowerBps) {

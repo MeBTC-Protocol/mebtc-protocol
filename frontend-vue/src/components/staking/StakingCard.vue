@@ -3,6 +3,7 @@ import { computed, ref } from "vue"
 import { formatUnits } from "ethers"
 import Card from "../common/Card.vue"
 import Button from "../common/Button.vue"
+import ErrorPopupInline from "../common/ErrorPopupInline.vue"
 import { TOKENS } from "../../contracts/addresses"
 
 const props = defineProps<{
@@ -44,6 +45,7 @@ const tierLabel = computed(() => {
   if (props.tier <= 0) return "None"
   return `Tier ${props.tier}`
 })
+
 </script>
 
 <template>
@@ -100,9 +102,8 @@ const tierLabel = computed(() => {
       lock aktiv - unstake erst nach unlock
     </div>
 
-    <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
-
-    <div v-if="inputError" style="margin-top:10px;">input: {{ inputError }}</div>
+    <ErrorPopupInline :error="error" context="Staking" />
+    <ErrorPopupInline :error="inputError" context="Staking Eingabe" />
 
     <div v-if="lastTx" class="ui-muted" style="margin-top:10px;">
       tx: {{ lastTx }}

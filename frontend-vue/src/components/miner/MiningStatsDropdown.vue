@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { formatUnits } from 'ethers'
 import { TOKENS } from '../../contracts/addresses'
+import ErrorPopupInline from '../common/ErrorPopupInline.vue'
 
 defineProps<{
   totalMined: bigint
@@ -9,6 +10,7 @@ defineProps<{
   demandVaultUsdc: bigint
   poolMebtc: bigint
   poolUsdc: bigint
+  totalEffectiveHash: bigint
   soldMiners: bigint
   mebtcDecimals: number
   firstMinerCreatedAt: bigint | null
@@ -41,6 +43,26 @@ function formatRemaining(seconds: number | null) {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins}m ${secs.toString().padStart(2, '0')}s`
+}
+
+function formatHashRate(value: bigint) {
+  const units = ['Hash/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s']
+  const base = 1_000n
+
+  let unitIndex = 0
+  let scaled = value
+  while (scaled >= base && unitIndex < units.length - 1) {
+    scaled = scaled / base
+    unitIndex++
+  }
+
+  const denom = base ** BigInt(unitIndex)
+  if (unitIndex === 0) return `${value.toString()} ${units[unitIndex]}`
+
+  const whole = value / denom
+  const frac = ((value % denom) * 100n) / denom
+  const fracText = frac.toString().padStart(2, '0')
+  return `${whole.toString()}.${fracText} ${units[unitIndex]}`
 }
 </script>
 
@@ -80,6 +102,7 @@ function formatRemaining(seconds: number | null) {
           <div>Nächster Block in: {{ formatRemaining(nextSlotInSeconds) }}</div>
           <div>Miner aktiv: {{ soldMiners.toString() }}</div>
           <div>Miner verkauft: {{ soldMiners.toString() }}</div>
+          <div>Hashrate gesamt: {{ formatHashRate(totalEffectiveHash) }}</div>
           <div>
             MeBTC gestakt:
             <b>{{ formatUnits(totalStaked, mebtcDecimals) }}</b>
@@ -100,7 +123,7 @@ function formatRemaining(seconds: number | null) {
             Pool USDC:
             <b>{{ formatUnits(poolUsdc, TOKENS.usdc.decimals) }}</b>
           </div>
-          <div v-if="error" style="color:#b00;">error: {{ error }}</div>
+          <ErrorPopupInline :error="error" context="Mining Stats" />
         </div>
       </div>
     </details>

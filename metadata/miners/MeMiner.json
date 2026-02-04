@@ -1,0 +1,11 @@
+{
+  "name": "MeMiner",
+  "description": "Balanced mid-tier ASIC miner for active MeBTC players.",
+  "image": "ipfs://bafybeihyhpuekhaolk5blmhnasstjesspa5gcvbrvx3y6donmuylllz2ua/MeMiner.png",
+  "attributes": [
+    { "trait_type": "Model", "value": "MeMiner" },
+    { "trait_type": "Hashrate (TH/s)", "value": 50 },
+    { "trait_type": "Power (W)", "value": 2250 },
+    { "trait_type": "Base Price (USD)", "value": 124 }
+  ]
+}

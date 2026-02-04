@@ -1,0 +1,11 @@
+{
+  "name": "BasicMiner",
+  "description": "Reliable entry ASIC miner in the MeBTC lineup.",
+  "image": "ipfs://bafybeihyhpuekhaolk5blmhnasstjesspa5gcvbrvx3y6donmuylllz2ua/BasicMiner.png",
+  "attributes": [
+    { "trait_type": "Model", "value": "BasicMiner" },
+    { "trait_type": "Hashrate (TH/s)", "value": 13.5 },
+    { "trait_type": "Power (W)", "value": 1350 },
+    { "trait_type": "Base Price (USD)", "value": 49 }
+  ]
+}

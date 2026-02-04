@@ -22,7 +22,7 @@ export type MinerMetaState =
   | { status: 'error'; error: string }
 
 export function useMinerNftMetadata(getTokenIds: () => bigint[]) {
-  const { readProvider } = useWallet()
+  const { readProvider, hasWalletProvider, browserProvider, onChain } = useWallet()
 
   const states = ref<Record<string, MinerMetaState>>({})
 
@@ -36,6 +36,15 @@ export function useMinerNftMetadata(getTokenIds: () => bigint[]) {
     if (ids.length === 0) return
 
     const miner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, readProvider.value)
+    let fallbackMiner: Contract | null = null
+
+    function getFallbackMiner() {
+      if (fallbackMiner) return fallbackMiner
+      const bp = browserProvider.value
+      if (!hasWalletProvider.value || !onChain.value || !bp) return null
+      fallbackMiner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, bp)
+      return fallbackMiner
+    }
 
     await Promise.all(
       ids.map(async (id) => {
@@ -50,7 +59,13 @@ export function useMinerNftMetadata(getTokenIds: () => bigint[]) {
         try {
           let tokenURI = tokenUriCache.get(key)
           if (!tokenURI) {
-            tokenURI = String(await miner.tokenURI(id))
+            try {
+              tokenURI = String(await miner.tokenURI(id))
+            } catch {
+              const fm = getFallbackMiner()
+              if (!fm) throw new Error('tokenURI failed (no fallback provider)')
+              tokenURI = String(await fm.tokenURI(id))
+            }
             tokenUriCache.set(key, tokenURI)
           }
 

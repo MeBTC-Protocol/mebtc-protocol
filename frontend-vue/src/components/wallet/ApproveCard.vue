@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Card from '../common/Card.vue'
 import Button from '../common/Button.vue'
+import ErrorPopupInline from '../common/ErrorPopupInline.vue'
 
 defineProps<{
   disabled: boolean
@@ -23,7 +24,7 @@ defineProps<{
       </Button>
     </div>
 
-    <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
+    <ErrorPopupInline :error="error" context="Approve USDC" />
     <div v-if="lastTx" class="ui-muted" style="margin-top:10px;">tx: {{ lastTx }}</div>
   </Card>
 </template>

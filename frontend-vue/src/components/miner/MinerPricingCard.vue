@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { formatUnits } from 'ethers'
 import Card from '../common/Card.vue'
 import Button from '../common/Button.vue'
+import ErrorPopupInline from '../common/ErrorPopupInline.vue'
 import { useMinerModels } from '../../composables/useMinerModels'
 import { useMinerUpgradeStates } from '../../composables/useMinerUpgradeStates'
 
@@ -98,13 +99,6 @@ const upgradeState = computed(() => {
   return upgradeStates.value[id.toString()] ?? ({ status: 'loading' } as const)
 })
 
-const upgradeStepsText = computed(() => {
-  if (upgradeState.value.status !== 'ok') return ''
-  const st = upgradeState.value
-  const powerPending = st.powerPendingSteps > 0 ? ` (+${st.powerPendingSteps} pending)` : ''
-  const hashPending = st.hashPendingSteps > 0 ? ` (+${st.hashPendingSteps} pending)` : ''
-  return `Power: ${st.powerActiveSteps}/${st.maxSteps}${powerPending} | Hash: ${st.hashActiveSteps}/${st.maxSteps}${hashPending}`
-})
 
 const upgradeNextCostText = computed(() => {
   if (upgradeState.value.status !== 'ok') return ''
@@ -156,7 +150,9 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
 <template>
   <Card title="Miner pricing/Buy and upgrade ">
     <div v-if="loading">loading models…</div>
-    <div v-else-if="modelErr">error loading models: {{ modelErr }}</div>
+    <div v-else-if="modelErr">
+      <ErrorPopupInline :error="modelErr" context="Modelle laden" />
+    </div>
 
     <div v-else>
       <div class="ui-row">
@@ -213,7 +209,7 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
       <div class="ui-section">
         <div class="ui-row ui-subtitle">
           <span>Upgrade miner</span>
-          <span class="ui-muted" style="font-size:11px;">
+          <span class="ui-muted upgrade-note" style="font-size:11px;">
             (upgrades erst nach erfolgtem claim aktiv)
           </span>
         </div>
@@ -290,9 +286,21 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
         </div>
         <div v-if="upgradeTokenId" class="ui-muted" style="margin-top:6px;font-size:12px;">
           <span v-if="upgradeState.status === 'loading'">loading upgrade status…</span>
-          <span v-else-if="upgradeState.status === 'error'">upgrade status error: {{ upgradeState.error }}</span>
+          <ErrorPopupInline
+            v-else-if="upgradeState.status === 'error'"
+            :error="upgradeState.error"
+            context="Upgrade Status"
+          />
           <span v-else-if="upgradeState.status === 'ok'">
-            model: {{ upgradeState.modelId }} | {{ upgradeStepsText }}
+            model: {{ upgradeState.modelId }} |
+            Power: {{ upgradeState.powerActiveSteps }}/{{ upgradeState.maxSteps }}
+            <span v-if="upgradeState.powerPendingSteps > 0" class="upgrade-pending">
+              (+{{ upgradeState.powerPendingSteps }} pending)
+            </span>
+            | Hash: {{ upgradeState.hashActiveSteps }}/{{ upgradeState.maxSteps }}
+            <span v-if="upgradeState.hashPendingSteps > 0" class="upgrade-pending">
+              (+{{ upgradeState.hashPendingSteps }} pending)
+            </span>
           </span>
         </div>
         <div v-if="upgradeState.status === 'ok' && upgradeNextCostText" class="ui-muted" style="margin-top:4px;font-size:12px;">
@@ -303,7 +311,7 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
         </div>
       </div>
 
-      <div v-if="actionError" style="margin-top:10px;">action error: {{ actionError }}</div>
+      <ErrorPopupInline :error="actionError" context="Miner Aktion" />
       <div v-if="actionLastTx" class="ui-muted" style="margin-top:10px;">action tx: {{ actionLastTx }}</div>
     </div>
   </Card>

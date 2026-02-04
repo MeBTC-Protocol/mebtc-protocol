@@ -1,0 +1,11 @@
+{
+  "name": "PrimeMiner",
+  "description": "High-end ASIC miner with premium hashrate and efficiency.",
+  "image": "ipfs://bafybeihyhpuekhaolk5blmhnasstjesspa5gcvbrvx3y6donmuylllz2ua/PrimeMiner.png",
+  "attributes": [
+    { "trait_type": "Model", "value": "PrimeMiner" },
+    { "trait_type": "Hashrate (TH/s)", "value": 200 },
+    { "trait_type": "Power (W)", "value": 3500 },
+    { "trait_type": "Base Price (USD)", "value": 749 }
+  ]
+}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Card from './Card.vue'
 import Button from './Button.vue'
+import ErrorPopupInline from './ErrorPopupInline.vue'
 
 defineProps<{
   open: boolean
@@ -60,7 +61,7 @@ defineProps<{
           </Button>
         </div>
 
-        <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
+        <ErrorPopupInline :error="error" context="Approval" />
       </Card>
     </div>
   </div>

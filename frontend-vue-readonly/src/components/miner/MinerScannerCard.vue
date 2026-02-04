@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import Button from '../common/Button.vue'
+import ErrorPopup from '../common/ErrorPopup.vue'
+import { useErrorPopup } from '../../composables/useErrorPopup'
 
-defineProps<{
+const props = defineProps<{
   disabled: boolean
   busy: boolean
   msg: string
@@ -10,6 +12,8 @@ defineProps<{
   onScan: () => void
   compact?: boolean
 }>()
+
+const { open, help, close } = useErrorPopup(() => props.error, 'Miner Scan')
 </script>
 
 <template>
@@ -30,9 +34,14 @@ defineProps<{
       <div :style="compact ? 'opacity:.75;font-size:11px;' : 'opacity:.75;'">{{ msg }}</div>
     </div>
 
-    <div v-if="error" :style="compact ? 'margin-top:6px;font-size:11px;' : 'margin-top:10px;'">
-      error: {{ error }}
-    </div>
+    <ErrorPopup
+      :open="open"
+      :title="help.title"
+      :message="help.message"
+      :steps="help.steps"
+      :raw="help.raw"
+      :onClose="close"
+    />
 
     <div :style="compact ? 'margin-top:6px;opacity:.75;font-size:11px;' : 'margin-top:10px;opacity:.75;'">
       tokenIds:

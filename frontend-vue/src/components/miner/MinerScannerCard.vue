@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Button from '../common/Button.vue'
+import ErrorPopupInline from '../common/ErrorPopupInline.vue'
 
 defineProps<{
   disabled: boolean
@@ -30,9 +31,7 @@ defineProps<{
       <div :style="compact ? 'opacity:.75;font-size:11px;' : 'opacity:.75;'">{{ msg }}</div>
     </div>
 
-    <div v-if="error" :style="compact ? 'margin-top:6px;font-size:11px;' : 'margin-top:10px;'">
-      error: {{ error }}
-    </div>
+    <ErrorPopupInline :error="error" context="Miner Scan" />
 
     <div :style="compact ? 'margin-top:6px;opacity:.75;font-size:11px;' : 'margin-top:10px;opacity:.75;'">
       tokenIds:

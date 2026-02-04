@@ -9,7 +9,7 @@ const ERC20_ABI = [
 ]
 
 export function useRouterAllowances() {
-  const { address, readProvider } = useWallet()
+  const { address, readProvider, hasWalletProvider, browserProvider, onChain } = useWallet()
   const { refreshKey } = useGlobalRefresh()
   let requestId = 0
 
@@ -31,20 +31,30 @@ export function useRouterAllowances() {
 
     loading.value = true
     try {
-      const p = readProvider.value
-      const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p)
-      const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p)
-      const lp = new Contract(ADDRESSES.pair, ERC20_ABI, p)
+      const readAllowances = async (p: any) => {
+        const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p)
+        const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p)
+        const lp = new Contract(ADDRESSES.pair, ERC20_ABI, p)
 
-      const [u, m, l] = await Promise.all([
-        usdc.allowance(a, ADDRESSES.router),
-        mebtc.allowance(a, ADDRESSES.router),
-        lp.allowance(a, ADDRESSES.router)
-      ])
-      if (rid !== requestId) return
-      usdcAllowance.value = u as bigint
-      mebtcAllowance.value = m as bigint
-      lpAllowance.value = l as bigint
+        const [u, m, l] = await Promise.all([
+          usdc.allowance(a, ADDRESSES.router),
+          mebtc.allowance(a, ADDRESSES.router),
+          lp.allowance(a, ADDRESSES.router)
+        ])
+        if (rid !== requestId) return
+        usdcAllowance.value = u as bigint
+        mebtcAllowance.value = m as bigint
+        lpAllowance.value = l as bigint
+      }
+
+      try {
+        await readAllowances(readProvider.value)
+      } catch {
+        const bp = browserProvider.value
+        if (hasWalletProvider.value && onChain.value && bp) {
+          await readAllowances(bp)
+        }
+      }
     } finally {
       if (rid === requestId) {
         loading.value = false

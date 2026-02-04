@@ -38,7 +38,7 @@ function isTooManyResultsError(e: any) {
 }
 
 export function useOwnedMinerTokenIds() {
-  const { address, readProvider, isConnected, onChain, chainId } = useWallet()
+  const { address, readProvider, isConnected, onChain, chainId, hasWalletProvider, browserProvider } = useWallet()
   const { refreshKey, rescanOwned } = useGlobalRefresh()
   const lastRefresh = ref(refreshKey.value)
 
@@ -74,11 +74,12 @@ export function useOwnedMinerTokenIds() {
   }
 
   async function getLogsPaged(params: {
+    provider: any
     fromBlock: number
     toBlock: number
     topics: (string | null)[]
   }) {
-    const p = readProvider.value
+    const p = params.provider
     let from = params.fromBlock
     const to = params.toBlock
     let span = INITIAL_SPAN
@@ -146,71 +147,85 @@ export function useOwnedMinerTokenIds() {
 
     busy.value = true
     try {
-      const p = readProvider.value
-      const miner = new Contract(ADDRESSES.minerNft, MINER_ABI, p)
+      const runScan = async (p: any) => {
+        const miner = new Contract(ADDRESSES.minerNft, MINER_ABI, p)
 
-      const user = getAddress(address.value)
+        const user = getAddress(address.value)
 
-      // Transfer(address,address,uint256)
-      const transferTopic = keccakId('Transfer(address,address,uint256)')
-      const topicUser = zeroPadValue(user, 32).toLowerCase()
+        // Transfer(address,address,uint256)
+        const transferTopic = keccakId('Transfer(address,address,uint256)')
+        const topicUser = zeroPadValue(user, 32).toLowerCase()
 
-      const latest = await p.getBlockNumber()
-      let fromBlock = Math.min(START_BLOCK, latest)
-      if (cached?.lastBlock && cached.lastBlock > 0) {
-        fromBlock = Math.max(START_BLOCK, Math.max(0, cached.lastBlock - BACKTRACK_BLOCKS))
-        if (fromBlock > latest) fromBlock = latest
-      }
+        const latest = await p.getBlockNumber()
+        let fromBlock = Math.min(START_BLOCK, latest)
+        if (cached?.lastBlock && cached.lastBlock > 0) {
+          fromBlock = Math.max(START_BLOCK, Math.max(0, cached.lastBlock - BACKTRACK_BLOCKS))
+          if (fromBlock > latest) fromBlock = latest
+        }
 
-      msg.value = `start scan from block ${fromBlock} to ${latest}…`
+        msg.value = `start scan from block ${fromBlock} to ${latest}…`
 
-      // ✅ logs where to = user (received/minted)
-      const logsTo = await getLogsPaged({
-        fromBlock,
-        toBlock: latest,
-        topics: [transferTopic, null, topicUser]
-      })
+        // ✅ logs where to = user (received/minted)
+        const logsTo = await getLogsPaged({
+          provider: p,
+          fromBlock,
+          toBlock: latest,
+          topics: [transferTopic, null, topicUser]
+        })
 
-      // ✅ logs where from = user (sent away)
-      const logsFrom = await getLogsPaged({
-        fromBlock,
-        toBlock: latest,
-        topics: [transferTopic, topicUser, null]
-      })
+        // ✅ logs where from = user (sent away)
+        const logsFrom = await getLogsPaged({
+          provider: p,
+          fromBlock,
+          toBlock: latest,
+          topics: [transferTopic, topicUser, null]
+        })
 
-      // Candidate set
-      const candidate = new Set<string>()
-      if (cached?.owned?.length) {
-        for (const id of cached.owned) candidate.add(id)
-      }
-      for (const l of logsTo) {
-        const tokenId = BigInt(l.topics[3])
-        candidate.add(tokenId.toString())
-      }
-      for (const l of logsFrom) {
-        const tokenId = BigInt(l.topics[3])
-        candidate.add(tokenId.toString())
-      }
+        // Candidate set
+        const candidate = new Set<string>()
+        if (cached?.owned?.length) {
+          for (const id of cached.owned) candidate.add(id)
+        }
+        for (const l of logsTo) {
+          const tokenId = BigInt(l.topics[3])
+          candidate.add(tokenId.toString())
+        }
+        for (const l of logsFrom) {
+          const tokenId = BigInt(l.topics[3])
+          candidate.add(tokenId.toString())
+        }
 
-      msg.value = `verifying ownerOf() for ${candidate.size} tokenIds…`
+        msg.value = `verifying ownerOf() for ${candidate.size} tokenIds…`
 
-      // Verify ownership now
-      const ids: bigint[] = []
-      const arr = Array.from(candidate).map(x => BigInt(x)).sort((x, y) => (x < y ? -1 : 1))
+        // Verify ownership now
+        const ids: bigint[] = []
+        const arr = Array.from(candidate).map(x => BigInt(x)).sort((x, y) => (x < y ? -1 : 1))
 
-      for (const tokenId of arr) {
-        try {
-          const currentOwner = getAddress(await miner.ownerOf(tokenId))
-          if (currentOwner === user) ids.push(tokenId)
-        } catch {
-          // ignore
+        for (const tokenId of arr) {
+          try {
+            const currentOwner = getAddress(await miner.ownerOf(tokenId))
+            if (currentOwner === user) ids.push(tokenId)
+          } catch {
+            // ignore
+          }
+        }
+
+        owned.value = ids
+        msg.value = `found ${ids.length} miners`
+        if (cacheKey) {
+          writeCache(cacheKey, { lastBlock: latest, owned: ids.map(x => x.toString()) })
         }
       }
 
-      owned.value = ids
-      msg.value = `found ${ids.length} miners`
-      if (cacheKey) {
-        writeCache(cacheKey, { lastBlock: latest, owned: ids.map(x => x.toString()) })
+      try {
+        await runScan(readProvider.value)
+      } catch {
+        const bp = browserProvider.value
+        if (hasWalletProvider.value && onChain.value && bp) {
+          await runScan(bp)
+        } else {
+          throw new Error('scan failed (no fallback provider)')
+        }
       }
     } catch (e: any) {
       error.value = e?.shortMessage ?? e?.message ?? String(e)

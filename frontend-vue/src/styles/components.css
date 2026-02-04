@@ -119,6 +119,80 @@
     margin-bottom: 8px;
   }
 
+  .error-popup {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: var(--ui-radius-sm);
+    border: var(--ui-border-width) solid rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--ui-text);
+    box-shadow: 0 14px 22px -20px var(--ui-shadow-color);
+  }
+
+  .error-popup-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .error-popup-title {
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .error-popup-close {
+    border: none;
+    background: transparent;
+    color: var(--ui-text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .error-popup-msg {
+    margin-top: 6px;
+    font-size: 12px;
+  }
+
+  .error-popup-steps {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--ui-text-muted);
+  }
+
+  .error-popup-steps-title {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 10px;
+    color: var(--ui-text);
+  }
+
+  .error-popup-steps ul {
+    margin: 6px 0 0 16px;
+    padding: 0;
+  }
+
+  .error-popup-steps li {
+    margin-bottom: 4px;
+  }
+
+  .error-popup-raw {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--ui-text-muted);
+  }
+
+  .error-popup-raw summary {
+    cursor: pointer;
+  }
+
+  .error-popup-raw-text {
+    margin-top: 6px;
+    word-break: break-word;
+  }
+
   .stat-list {
     display: grid;
     gap: 8px;
@@ -390,6 +464,135 @@
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
 
+  .miner-list {
+    grid-template-columns: 1fr;
+  }
+
+  .miner-list .miner-card {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    grid-template-areas:
+      "image title"
+      "image meta";
+    align-items: start;
+    gap: 2px 4px;
+    padding: 2px 4px;
+  }
+
+  .miner-list .miner-title {
+    grid-area: title;
+    margin: 0;
+    font-size: 12px;
+  }
+
+  .miner-list .miner-image {
+    grid-area: image;
+    width: 36px;
+    border-radius: 6px;
+  }
+
+  .miner-list .miner-meta {
+    grid-area: meta;
+    margin-top: 0;
+    font-size: 11px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+  }
+
+  .miner-list .miner-meta > div {
+    white-space: nowrap;
+  }
+
+  .miner-list .miner-meta .error-popup {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .miner-group-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .miner-group {
+    border-radius: var(--ui-radius-md);
+    border: var(--ui-border-width) solid var(--ui-border);
+    background: linear-gradient(180deg, var(--ui-panel), var(--ui-panel-2));
+    box-shadow: 0 12px 20px -18px var(--ui-shadow-color);
+    padding: 6px;
+  }
+
+  .miner-group-summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 6px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ui-text);
+  }
+
+  .miner-group-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .miner-group-summary::marker {
+    content: '';
+  }
+
+  .miner-group-title {
+    font-family: var(--ui-font-display);
+  }
+
+  .miner-group-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .miner-group-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--ui-panel-2);
+    border: var(--ui-border-width) solid var(--ui-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  .miner-group-thumb.model-basic {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+  }
+
+  .miner-group-thumb.model-me {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+  .miner-group-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .miner-group-count {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: var(--ui-border-width) solid var(--ui-border);
+    background: var(--ui-panel-2);
+    color: var(--ui-text-muted);
+  }
+
   .miner-card {
     border-radius: var(--ui-radius-md);
     border: var(--ui-border-width) solid var(--ui-border);
@@ -407,6 +610,24 @@
     height: 3px;
     background: linear-gradient(90deg, var(--ui-accent), var(--ui-accent-2));
     opacity: 0.75;
+  }
+
+  .miner-card.model-basic {
+    border-color: rgba(34, 197, 94, 0.5);
+    background: linear-gradient(180deg, rgba(34, 197, 94, 0.18), rgba(34, 197, 94, 0.06));
+  }
+
+  .miner-card.model-basic::before {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+  }
+
+  .miner-card.model-me {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.06));
+  }
+
+  .miner-card.model-me::before {
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
   }
 
   .miner-title {
@@ -438,6 +659,25 @@
     color: var(--ui-text-muted);
     display: grid;
     gap: 4px;
+  }
+
+  .upgrade-pending {
+    color: var(--ui-success);
+    font-weight: 600;
+  }
+
+  .staking-bonus {
+    color: var(--ui-success);
+    font-weight: 600;
+  }
+
+  .token-id-number {
+    color: var(--ui-accent-3);
+    font-weight: 600;
+  }
+
+  .ui-muted.upgrade-note {
+    color: var(--ui-success);
   }
 
   .news-list {

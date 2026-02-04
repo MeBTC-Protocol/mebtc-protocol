@@ -119,6 +119,80 @@
     margin-bottom: 8px;
   }
 
+  .error-popup {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: var(--ui-radius-sm);
+    border: var(--ui-border-width) solid rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--ui-text);
+    box-shadow: 0 14px 22px -20px var(--ui-shadow-color);
+  }
+
+  .error-popup-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .error-popup-title {
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .error-popup-close {
+    border: none;
+    background: transparent;
+    color: var(--ui-text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .error-popup-msg {
+    margin-top: 6px;
+    font-size: 12px;
+  }
+
+  .error-popup-steps {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--ui-text-muted);
+  }
+
+  .error-popup-steps-title {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 10px;
+    color: var(--ui-text);
+  }
+
+  .error-popup-steps ul {
+    margin: 6px 0 0 16px;
+    padding: 0;
+  }
+
+  .error-popup-steps li {
+    margin-bottom: 4px;
+  }
+
+  .error-popup-raw {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--ui-text-muted);
+  }
+
+  .error-popup-raw summary {
+    cursor: pointer;
+  }
+
+  .error-popup-raw-text {
+    margin-top: 6px;
+    word-break: break-word;
+  }
+
   .stat-list {
     display: grid;
     gap: 8px;
@@ -438,6 +512,15 @@
     color: var(--ui-text-muted);
     display: grid;
     gap: 4px;
+  }
+
+  .upgrade-pending {
+    color: var(--ui-success);
+    font-weight: 600;
+  }
+
+  .ui-muted.upgrade-note {
+    color: var(--ui-success);
   }
 
   .news-list {

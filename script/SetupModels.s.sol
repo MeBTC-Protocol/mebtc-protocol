@@ -12,8 +12,12 @@ Env:
   MINER_ADDRESS
 
 Optional:
+  RIG_URI
   BASIC_URI
   MEMINER_URI
+  PROMINER_URI
+  PRIMEMINER_URI
+  APEXMINER_URI
 
 USDC Decimals:
   In den Costs/Prices verwenden wir 6 decimals (1 USDC = 1_000_000)
@@ -34,84 +38,230 @@ contract SetupModels is Script {
 
         MinerNFT miner = MinerNFT(minerAddr);
 
-        string memory basicUri = _envStringOr("BASIC_URI", "ipfs://BASIC_MINER_METADATA");
-        string memory meUri    = _envStringOr("MEMINER_URI", "ipfs://ME_MINER_METADATA");
-
+        string memory rigUri = _envStringOr(
+            "RIG_URI",
+            "ipfs://bafybeigsp6tfv3i3ue5efhcbejgjvuo34ditxb7o2fvqjxokb5fn5fmtjq/RigMiner.json"
+        );
+        string memory basicUri = _envStringOr(
+            "BASIC_URI",
+            "ipfs://bafybeigsp6tfv3i3ue5efhcbejgjvuo34ditxb7o2fvqjxokb5fn5fmtjq/BasicMiner.json"
+        );
+        string memory meUri = _envStringOr(
+            "MEMINER_URI",
+            "ipfs://bafybeigsp6tfv3i3ue5efhcbejgjvuo34ditxb7o2fvqjxokb5fn5fmtjq/MeMiner.json"
+        );
+        string memory proUri = _envStringOr(
+            "PROMINER_URI",
+            "ipfs://bafybeigsp6tfv3i3ue5efhcbejgjvuo34ditxb7o2fvqjxokb5fn5fmtjq/ProMiner.json"
+        );
+        string memory primeUri = _envStringOr(
+            "PRIMEMINER_URI",
+            "ipfs://bafybeigsp6tfv3i3ue5efhcbejgjvuo34ditxb7o2fvqjxokb5fn5fmtjq/PrimeMiner.json"
+        );
+        string memory apexUri = _envStringOr(
+            "APEXMINER_URI",
+            "ipfs://bafybeigsp6tfv3i3ue5efhcbejgjvuo34ditxb7o2fvqjxokb5fn5fmtjq/ApexMiner.json"
+        );
 
         // -------------------------
-        // BasicMiner (Nerdminer-like)
+        // RigMiner
         // -------------------------
-        // baseHashrate: 500 (interpretiere es als 500 Ghash in deinem UI, onchain ist es nur eine Einheit)
-        // power: 20 W
+        // baseHashrate: 500 (0.5 TH/s = 500 GH/s)
+        // power: 200 W
+        // maxSupply: 50,000
+        // price: 24 USDC
+        uint256[4] memory rigPowerCosts = [
+            uint256(1_000_000),  // 1 USDC
+            uint256(2_000_000),  // 2 USDC
+            uint256(3_000_000),  // 3 USDC
+            uint256(5_000_000)   // 5 USDC
+        ];
+
+        uint256[4] memory rigHashCosts = [
+            uint256(2_000_000),  // 2 USDC
+            uint256(4_000_000),  // 4 USDC
+            uint256(6_000_000),  // 6 USDC
+            uint256(9_000_000)   // 9 USDC
+        ];
+
+        // -------------------------
+        // BasicMiner
+        // -------------------------
+        // baseHashrate: 13,500 (13.5 TH/s)
+        // power: 1350 W
         // maxSupply: 20,000
-        // price: 1 USDC
-        //
-        // powerCosts / hashCosts = upgrade step costs (4 steps)
-        // (Vorschlag: stark ansteigend, weil "letztes Tuning" teurer ist)
+        // price: 49 USDC
         uint256[4] memory basicPowerCosts = [
-            uint256(50_000),   // 0.05 USDC
-            uint256(150_000),  // 0.15 USDC
-            uint256(400_000),  // 0.40 USDC
-            uint256(1_000_000) // 1.00 USDC
+            uint256(1_000_000),  // 1 USDC
+            uint256(2_000_000),  // 2 USDC
+            uint256(4_000_000),  // 4 USDC
+            uint256(6_000_000)   // 6 USDC
         ];
 
         uint256[4] memory basicHashCosts = [
-            uint256(100_000),  // 0.10 USDC
-            uint256(250_000),  // 0.25 USDC
-            uint256(600_000),  // 0.60 USDC
-            uint256(1_500_000) // 1.50 USDC
+            uint256(2_000_000),   // 2 USDC
+            uint256(4_000_000),   // 4 USDC
+            uint256(6_000_000),   // 6 USDC
+            uint256(10_000_000)   // 10 USDC
         ];
 
         // -------------------------
-        // MeMiner (S9 feeling: mehr Power, aber bessere Effizienz)
+        // MeMiner
         // -------------------------
-        // baseHashrate: 2000
-        // power: 50 W
+        // baseHashrate: 50,000 (50 TH/s)
+        // power: 2250 W
         // maxSupply: 10,000
-        // price: 3 USDC
-        //
-        // Upgrade-Kosten "ausgeglichen" (gleichmäßiger ansteigend)
+        // price: 124 USDC
         uint256[4] memory mePowerCosts = [
-           uint256(250_000),  // 0.25 USDC
-           uint256(350_000),  // 0.35 USDC
-           uint256(500_000),  // 0.50 USDC
-           uint256(700_000)   // 0.70 USDC
+           uint256(2_000_000),   // 2 USDC
+           uint256(5_000_000),   // 5 USDC
+           uint256(9_000_000),   // 9 USDC
+           uint256(14_000_000)   // 14 USDC
         ];
 
         uint256[4] memory meHashCosts = [
-           uint256(350_000),  // 0.35 USDC
-           uint256(500_000),  // 0.50 USDC
-           uint256(700_000),  // 0.70 USDC
-           uint256(950_000)   // 0.95 USDC
+           uint256(4_000_000),   // 4 USDC
+           uint256(7_000_000),   // 7 USDC
+           uint256(12_000_000),  // 12 USDC
+           uint256(20_000_000)   // 20 USDC
+        ];
+
+        // -------------------------
+        // ProMiner
+        // -------------------------
+        // baseHashrate: 104,000 (104 TH/s)
+        // power: 3068 W
+        // maxSupply: 3,000
+        // price: 349 USDC
+        uint256[4] memory proPowerCosts = [
+            uint256(6_000_000),   // 6 USDC
+            uint256(12_000_000),  // 12 USDC
+            uint256(19_000_000),  // 19 USDC
+            uint256(31_000_000)   // 31 USDC
+        ];
+
+        uint256[4] memory proHashCosts = [
+            uint256(10_000_000),  // 10 USDC
+            uint256(19_000_000),  // 19 USDC
+            uint256(31_000_000),  // 31 USDC
+            uint256(50_000_000)   // 50 USDC
+        ];
+
+        // -------------------------
+        // PrimeMiner
+        // -------------------------
+        // baseHashrate: 200,000 (200 TH/s)
+        // power: 3500 W
+        // maxSupply: 800
+        // price: 749 USDC
+        uint256[4] memory primePowerCosts = [
+            uint256(10_000_000),  // 10 USDC
+            uint256(20_000_000),  // 20 USDC
+            uint256(35_000_000),  // 35 USDC
+            uint256(55_000_000)   // 55 USDC
+        ];
+
+        uint256[4] memory primeHashCosts = [
+            uint256(17_000_000),  // 17 USDC
+            uint256(35_000_000),  // 35 USDC
+            uint256(55_000_000),  // 55 USDC
+            uint256(90_000_000)   // 90 USDC
+        ];
+
+        // -------------------------
+        // ApexMiner
+        // -------------------------
+        // baseHashrate: 270,000 (270 TH/s)
+        // power: 3645 W
+        // maxSupply: 200
+        // price: 1,499 USDC
+        uint256[4] memory apexPowerCosts = [
+            uint256(19_000_000),  // 19 USDC
+            uint256(37_000_000),  // 37 USDC
+            uint256(67_000_000),  // 67 USDC
+            uint256(105_000_000)  // 105 USDC
+        ];
+
+        uint256[4] memory apexHashCosts = [
+            uint256(34_000_000),  // 34 USDC
+            uint256(67_000_000),  // 67 USDC
+            uint256(105_000_000), // 105 USDC
+            uint256(165_000_000)  // 165 USDC
         ];
 
         vm.startBroadcast(pk);
 
-        // Add + finalize BasicMiner
+        // Add RigMiner
+        uint16 rigId = miner.addModel(
+            500,                // baseHashrate
+            200,                // basePowerWatt
+            50_000,             // maxSupply
+            24_000_000,         // priceUSDC
+            rigUri,
+            rigPowerCosts,
+            rigHashCosts
+        );
+        console2.log("RigMiner added modelId:", uint256(rigId));
+
+        // Add BasicMiner
         uint16 basicId = miner.addModel(
-            500,                 // baseHashrate
-            20,                  // basePowerWatt
-            20_000,              // maxSupply
-            1_000_000,            // priceUSDC
+            13_500,             // baseHashrate
+            1_350,              // basePowerWatt
+            20_000,             // maxSupply
+            49_000_000,         // priceUSDC
             basicUri,
             basicPowerCosts,
             basicHashCosts
         );
-        miner.finalizeModel(basicId);
-        console2.log("BasicMiner modelId:", uint256(basicId));
+        console2.log("BasicMiner added modelId:", uint256(basicId));
 
-        // Add + finalize MeMiner
+        // Add MeMiner
         uint16 meId = miner.addModel(
-            2000,                // baseHashrate
-            50,                  // basePowerWatt
-            10_000,              // maxSupply
-            3_000_000,            // priceUSDC
+            50_000,             // baseHashrate
+            2_250,              // basePowerWatt
+            10_000,             // maxSupply
+            124_000_000,        // priceUSDC
             meUri,
             mePowerCosts,
             meHashCosts
         );
-        miner.finalizeModel(meId);
-        console2.log("MeMiner modelId:", uint256(meId));
+        console2.log("MeMiner added modelId:", uint256(meId));
+
+        // Add ProMiner
+        uint16 proId = miner.addModel(
+            104_000,            // baseHashrate
+            3_068,              // basePowerWatt
+            3_000,              // maxSupply
+            349_000_000,        // priceUSDC
+            proUri,
+            proPowerCosts,
+            proHashCosts
+        );
+        console2.log("ProMiner added modelId:", uint256(proId));
+
+        // Add PrimeMiner
+        uint16 primeId = miner.addModel(
+            200_000,            // baseHashrate
+            3_500,              // basePowerWatt
+            800,                // maxSupply
+            749_000_000,        // priceUSDC
+            primeUri,
+            primePowerCosts,
+            primeHashCosts
+        );
+        console2.log("PrimeMiner added modelId:", uint256(primeId));
+
+        // Add ApexMiner
+        uint16 apexId = miner.addModel(
+            270_000,            // baseHashrate
+            3_645,              // basePowerWatt
+            200,                // maxSupply
+            1_499_000_000,      // priceUSDC
+            apexUri,
+            apexPowerCosts,
+            apexHashCosts
+        );
+        console2.log("ApexMiner added modelId:", uint256(apexId));
 
         vm.stopBroadcast();
     }

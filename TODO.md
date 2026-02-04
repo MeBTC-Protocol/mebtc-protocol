@@ -12,6 +12,7 @@
 - Modelle anlegen (BasicMiner, MeMiner) auf Fuji
 
 ### Naechste Schritte
+- MiningManager/Contracts erweitern: aktive Miner-Anzahl und gesamte Hashrate (inkl. Upgrades + Stake-Bonus) als direkte View abrufbar machen
 - Token-Reset ohne Redeploy pruefen (setPayToken vs. Vault/Engine/TWAP Bindung)
 - Fuji: Testkauf (Miner minten)
 - Fuji: Claim (USDC Fee zahlen, MeBTC minten)

@@ -11,7 +11,7 @@ const ERC20_ABI = [
 ]
 
 export function useAllowances() {
-  const { address, readProvider } = useWallet()
+  const { address, readProvider, hasWalletProvider, browserProvider, onChain } = useWallet()
   const { refreshKey } = useGlobalRefresh()
   let requestId = 0
 
@@ -32,17 +32,27 @@ export function useAllowances() {
 
     loading.value = true
     try {
-      const p = readProvider.value
-      const token = await fetchPayTokenAddress(p)
-      const payToken = new Contract(token, ERC20_ABI, p)
+      const readAllowances = async (p: any) => {
+        const token = await fetchPayTokenAddress(p)
+        const payToken = new Contract(token, ERC20_ABI, p)
 
-      const [minerRes, managerRes] = await Promise.all([
-        payToken.allowance(a, ADDRESSES.minerNft),
-        payToken.allowance(a, ADDRESSES.miningManager)
-      ])
-      if (rid !== requestId) return
-      allowanceMiner.value = minerRes as bigint
-      allowanceManager.value = managerRes as bigint
+        const [minerRes, managerRes] = await Promise.all([
+          payToken.allowance(a, ADDRESSES.minerNft),
+          payToken.allowance(a, ADDRESSES.miningManager)
+        ])
+        if (rid !== requestId) return
+        allowanceMiner.value = minerRes as bigint
+        allowanceManager.value = managerRes as bigint
+      }
+
+      try {
+        await readAllowances(readProvider.value)
+      } catch {
+        const bp = browserProvider.value
+        if (hasWalletProvider.value && onChain.value && bp) {
+          await readAllowances(bp)
+        }
+      }
     } finally {
       if (rid === requestId) {
         loading.value = false

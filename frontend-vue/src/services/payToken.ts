@@ -1,9 +1,9 @@
 import { Contract } from 'ethers'
-import type { JsonRpcProvider } from 'ethers'
+import type { Provider } from 'ethers'
 import { ADDRESSES, TOKENS } from '../contracts/addresses'
 import { miningManagerAbi } from '../contracts/abi'
 
-export async function fetchPayTokenAddress(provider: JsonRpcProvider): Promise<string> {
+export async function fetchPayTokenAddress(provider: Provider): Promise<string> {
   const manager = new Contract(ADDRESSES.miningManager, miningManagerAbi, provider)
   try {
     return await manager.payToken()
@@ -17,7 +17,7 @@ const ERC20_META_ABI = [
   'function decimals() view returns (uint8)'
 ]
 
-export async function fetchPayTokenMeta(provider: JsonRpcProvider): Promise<{
+export async function fetchPayTokenMeta(provider: Provider): Promise<{
   address: string
   symbol: string
   decimals: number

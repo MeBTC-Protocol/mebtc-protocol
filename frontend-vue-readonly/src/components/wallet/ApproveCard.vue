@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import Card from '../common/Card.vue'
 import Button from '../common/Button.vue'
+import ErrorPopup from '../common/ErrorPopup.vue'
+import { useErrorPopup } from '../../composables/useErrorPopup'
 
-defineProps<{
+const props = defineProps<{
   disabled: boolean
   busy: boolean
   error: string
@@ -10,6 +12,8 @@ defineProps<{
   onApproveMiner: () => void
   onApproveManager: () => void
 }>()
+
+const { open, help, close } = useErrorPopup(() => props.error, 'Approve USDC')
 </script>
 
 <template>
@@ -23,7 +27,14 @@ defineProps<{
       </Button>
     </div>
 
-    <div v-if="error" style="margin-top:10px;">error: {{ error }}</div>
+    <ErrorPopup
+      :open="open"
+      :title="help.title"
+      :message="help.message"
+      :steps="help.steps"
+      :raw="help.raw"
+      :onClose="close"
+    />
     <div v-if="lastTx" class="ui-muted" style="margin-top:10px;">tx: {{ lastTx }}</div>
   </Card>
 </template>

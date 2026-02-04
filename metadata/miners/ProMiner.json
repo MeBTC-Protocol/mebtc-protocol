@@ -1,0 +1,11 @@
+{
+  "name": "ProMiner",
+  "description": "Core high-performance model with strong output for its tier.",
+  "image": "ipfs://bafybeihyhpuekhaolk5blmhnasstjesspa5gcvbrvx3y6donmuylllz2ua/ProMiner.png",
+  "attributes": [
+    { "trait_type": "Model", "value": "ProMiner" },
+    { "trait_type": "Hashrate (TH/s)", "value": 104 },
+    { "trait_type": "Power (W)", "value": 3068 },
+    { "trait_type": "Base Price (USD)", "value": 349 }
+  ]
+}
