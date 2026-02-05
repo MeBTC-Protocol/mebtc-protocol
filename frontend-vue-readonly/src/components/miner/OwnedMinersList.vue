@@ -85,6 +85,37 @@ function errorFor(id: string) {
   return st && st.status === 'error' ? st.error : ''
 }
 
+function modelIdFor(id: string) {
+  const st = upgradeStates.value[id]
+  return st && st.status === 'ok' ? st.modelId : null
+}
+
+function modelTypeFor(id: string) {
+  const metaName = states.value[id]?.status === 'ok' ? states.value[id].meta.name ?? '' : ''
+  const normalized = metaName.toLowerCase()
+
+  if (normalized.includes('rigminer') || normalized.includes('rig miner')) return 'rig'
+  if (normalized.includes('basicminer') || normalized.includes('basic miner')) return 'basic'
+  if (normalized.includes('meminer') || normalized.includes('me miner')) return 'me'
+  if (normalized.includes('prominer') || normalized.includes('pro miner')) return 'pro'
+  if (normalized.includes('primeminer') || normalized.includes('prime miner')) return 'prime'
+  if (normalized.includes('apexminer') || normalized.includes('apex miner')) return 'apex'
+
+  const modelId = modelIdFor(id)
+  if (modelId === 1) return 'rig'
+  if (modelId === 2) return 'basic'
+  if (modelId === 3) return 'me'
+  if (modelId === 4) return 'pro'
+  if (modelId === 5) return 'prime'
+  if (modelId === 6) return 'apex'
+  return ''
+}
+
+function minerCardClass(id: string) {
+  const type = modelTypeFor(id)
+  return type ? `miner-card model-${type}` : 'miner-card'
+}
+
 </script>
 
 <template>
@@ -100,7 +131,7 @@ function errorFor(id: string) {
     <div
       v-for="id in owned"
       :key="id.toString()"
-      class="miner-card"
+      :class="minerCardClass(id.toString())"
     >
       <div class="miner-title">
         {{ nameFor(id.toString()) }}

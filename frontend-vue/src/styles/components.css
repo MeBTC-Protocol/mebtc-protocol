@@ -572,9 +572,29 @@
     box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
   }
 
+  .miner-group-thumb.model-rig {
+    border-color: #94a3b8;
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.25);
+  }
+
   .miner-group-thumb.model-me {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+  .miner-group-thumb.model-pro {
+    border-color: #a855f7;
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+  }
+
+  .miner-group-thumb.model-prime {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+  }
+
+  .miner-group-thumb.model-apex {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
   }
 
   .miner-group-thumb img {
@@ -613,21 +633,57 @@
   }
 
   .miner-card.model-basic {
-    border-color: rgba(34, 197, 94, 0.5);
-    background: linear-gradient(180deg, rgba(34, 197, 94, 0.18), rgba(34, 197, 94, 0.06));
+    border-color: rgba(34, 197, 94, 0.55);
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.06));
   }
 
   .miner-card.model-basic::before {
     background: linear-gradient(90deg, #22c55e, #16a34a);
   }
 
+  .miner-card.model-rig {
+    border-color: rgba(148, 163, 184, 0.55);
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.06));
+  }
+
+  .miner-card.model-rig::before {
+    background: linear-gradient(90deg, #94a3b8, #64748b);
+  }
+
   .miner-card.model-me {
-    border-color: rgba(59, 130, 246, 0.5);
-    background: linear-gradient(180deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.06));
+    border-color: rgba(59, 130, 246, 0.55);
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.06));
   }
 
   .miner-card.model-me::before {
     background: linear-gradient(90deg, #3b82f6, #2563eb);
+  }
+
+  .miner-card.model-pro {
+    border-color: rgba(168, 85, 247, 0.55);
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.06));
+  }
+
+  .miner-card.model-pro::before {
+    background: linear-gradient(90deg, #a855f7, #7c3aed);
+  }
+
+  .miner-card.model-prime {
+    border-color: rgba(245, 158, 11, 0.6);
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.06));
+  }
+
+  .miner-card.model-prime::before {
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+  }
+
+  .miner-card.model-apex {
+    border-color: rgba(239, 68, 68, 0.6);
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.06));
+  }
+
+  .miner-card.model-apex::before {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
   }
 
   .miner-title {

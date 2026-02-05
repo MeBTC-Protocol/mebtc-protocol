@@ -21,6 +21,8 @@ const props = defineProps<{
   onBuyModel: (modelId: number, qty: number) => void
   onUpgradePower: (tokenId: bigint, mebtcShareBps: number) => void
   onUpgradeHash: (tokenId: bigint, mebtcShareBps: number) => void
+  onUpgradePowerBatch: (tokenIds: bigint[], mebtcShareBps: number, totalCost: bigint) => void
+  onUpgradeHashBatch: (tokenIds: bigint[], mebtcShareBps: number, totalCost: bigint) => void
   mebtcUpgradeAllowanceText: string
   payTokenSymbol: string
   payTokenDecimals: number
@@ -32,6 +34,7 @@ const { loading, models, error: modelErr } = useMinerModels()
 const selectedModelId = ref<number>(1)
 const qty = ref<number>(1)
 const upgradeTokenId = ref<string>('')
+const upgradeBatchTokenIds = ref<string>('')
 const upgradeId = computed(() => parsedUpgradeTokenId())
 const mebtcSharePercent = ref<number>(0)
 
@@ -86,12 +89,38 @@ function parsedUpgradeTokenId(): bigint | null {
   }
 }
 
+function parseTokenIds(raw: string): { ids: bigint[]; error: string } {
+  const cleaned = raw.trim()
+  if (!cleaned) return { ids: [], error: '' }
+  const parts = cleaned.split(/[\s,;]+/).filter(Boolean)
+  const ids: bigint[] = []
+  const seen = new Set<string>()
+  for (const part of parts) {
+    try {
+      const id = BigInt(part)
+      if (id <= 0n) return { ids: [], error: `ungueltige tokenId: ${part}` }
+      const key = id.toString()
+      if (!seen.has(key)) {
+        seen.add(key)
+        ids.push(id)
+      }
+    } catch {
+      return { ids: [], error: `ungueltige tokenId: ${part}` }
+    }
+  }
+  return { ids, error: '' }
+}
+
 const mebtcShareBps = computed(() => {
   const p = Math.max(0, Math.min(30, Math.floor(mebtcSharePercent.value || 0)))
   return p * 100
 })
 
 const { states: upgradeStates } = useMinerUpgradeStates(() => (upgradeId.value ? [upgradeId.value] : []))
+const batchParsed = computed(() => parseTokenIds(upgradeBatchTokenIds.value))
+const batchIds = computed(() => batchParsed.value.ids)
+const batchParseError = computed(() => batchParsed.value.error)
+const { states: batchUpgradeStates } = useMinerUpgradeStates(() => batchIds.value)
 
 const upgradeState = computed(() => {
   const id = upgradeId.value
@@ -137,6 +166,53 @@ const upgradeHashCost = computed(() => {
   const cost = model.hashStepCost?.[idx]
   return typeof cost === 'bigint' ? cost : 0n
 })
+
+const batchPower = computed(() => {
+  const ids = batchIds.value
+  if (!ids.length) return { ready: false, total: 0n, reason: '' }
+  if (batchParseError.value) return { ready: false, total: 0n, reason: batchParseError.value }
+  let total = 0n
+  for (const id of ids) {
+    const st = batchUpgradeStates.value[id.toString()]
+    if (!st || st.status === 'loading') return { ready: false, total: 0n, reason: 'lade states…' }
+    if (st.status === 'error') return { ready: false, total: 0n, reason: `fehler bei #${id}` }
+    const model = modelById.value.get(st.modelId)
+    if (!model) return { ready: false, total: 0n, reason: `model ${st.modelId} fehlt` }
+    const idx = st.powerActiveSteps + st.powerPendingSteps
+    const cost = model.powerStepCost?.[idx]
+    if (!cost || idx >= model.powerStepCost.length) {
+      return { ready: false, total: 0n, reason: `power max: #${id}` }
+    }
+    total += cost
+  }
+  return { ready: true, total, reason: '' }
+})
+
+const batchHash = computed(() => {
+  const ids = batchIds.value
+  if (!ids.length) return { ready: false, total: 0n, reason: '' }
+  if (batchParseError.value) return { ready: false, total: 0n, reason: batchParseError.value }
+  let total = 0n
+  for (const id of ids) {
+    const st = batchUpgradeStates.value[id.toString()]
+    if (!st || st.status === 'loading') return { ready: false, total: 0n, reason: 'lade states…' }
+    if (st.status === 'error') return { ready: false, total: 0n, reason: `fehler bei #${id}` }
+    const model = modelById.value.get(st.modelId)
+    if (!model) return { ready: false, total: 0n, reason: `model ${st.modelId} fehlt` }
+    const idx = st.hashActiveSteps + st.hashPendingSteps
+    const cost = model.hashStepCost?.[idx]
+    if (!cost || idx >= model.hashStepCost.length) {
+      return { ready: false, total: 0n, reason: `hash max: #${id}` }
+    }
+    total += cost
+  }
+  return { ready: true, total, reason: '' }
+})
+
+function fillBatchFromOwned() {
+  if (!props.owned?.length) return
+  upgradeBatchTokenIds.value = props.owned.map(x => x.toString()).join(', ')
+}
 
 watch([missingForBuy, approveEndValue], ([missing, endValue]) => {
   emit('approve-stats', { missing, endValue })
@@ -308,6 +384,63 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
         </div>
         <div v-if="owned.length" class="ui-muted" style="margin-top:6px;font-size:12px;">
           owned tokenIds: {{ owned.map(x => x.toString()).join(', ') }}
+        </div>
+      </div>
+
+      <div class="ui-section">
+        <div class="ui-row ui-subtitle">
+          <span>Batch upgrade</span>
+          <span class="ui-muted upgrade-note" style="font-size:11px;">
+            (ein step pro miner)
+          </span>
+        </div>
+        <div class="ui-row" style="align-items:flex-start;">
+          <textarea
+            v-model="upgradeBatchTokenIds"
+            class="ui-input"
+            placeholder="tokenIds (z.B. 1,2,3)"
+            rows="3"
+            style="min-width:240px;max-width:420px;"
+          />
+          <div class="ui-muted" style="font-size:12px;line-height:1.4;">
+            <div>count: {{ batchIds.length }}</div>
+            <Button size="sm" :disabled="!owned.length" @click="fillBatchFromOwned">
+              use all owned
+            </Button>
+          </div>
+        </div>
+        <div v-if="batchParseError" class="ui-muted" style="margin-top:6px;font-size:12px;">
+          {{ batchParseError }}
+        </div>
+        <div class="ui-row" style="margin-top:6px;">
+          <Button
+            :disabled="disabled || actionBusy || !batchPower.ready"
+            size="sm"
+            @click="() => onUpgradePowerBatch(batchIds, mebtcShareBps, batchPower.total)"
+          >
+            upgrade power (batch)
+          </Button>
+          <Button
+            :disabled="disabled || actionBusy || !batchHash.ready"
+            size="sm"
+            @click="() => onUpgradeHashBatch(batchIds, mebtcShareBps, batchHash.total)"
+          >
+            upgrade hash (batch)
+          </Button>
+        </div>
+        <div class="ui-muted" style="margin-top:6px;font-size:12px;">
+          <div v-if="batchPower.ready">
+            total power cost: {{ fmt(batchPower.total) }} {{ payTokenSymbol }}
+          </div>
+          <div v-else-if="batchPower.reason">
+            power: {{ batchPower.reason }}
+          </div>
+          <div v-if="batchHash.ready">
+            total hash cost: {{ fmt(batchHash.total) }} {{ payTokenSymbol }}
+          </div>
+          <div v-else-if="batchHash.reason">
+            hash: {{ batchHash.reason }}
+          </div>
         </div>
       </div>
 

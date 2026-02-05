@@ -93,7 +93,9 @@ const {
   lastTx: actionLastTx,
   buyFromModel,
   requestUpgradePower,
-  requestUpgradeHash
+  requestUpgradeHash,
+  requestUpgradePowerBatch,
+  requestUpgradeHashBatch
 } = useMinerActions()
 
 // miners
@@ -552,6 +554,50 @@ async function upgradeHashWithApproval(tokenId: bigint, mebtcShareBps: number) {
   await requestUpgradeHash(tokenId, mebtcShareBps)
 }
 
+async function upgradePowerBatchWithApproval(tokenIds: bigint[], mebtcShareBps: number, totalCost: bigint) {
+  if (!tokenIds.length) throw new Error('keine tokenIds')
+  const cost = totalCost
+  if (cost > 0n) {
+    const share = Math.max(0, Math.min(3000, Math.floor(mebtcShareBps)))
+    const mebtcUsdc = (cost * BigInt(share)) / 10_000n
+    const usdcPart = cost - mebtcUsdc
+    if (usdcPart > 0n) {
+      const ok = await ensurePayTokenForMiner(usdcPart)
+      if (!ok) return
+    }
+    if (share > 0) {
+      const mebtcAmount = calcMebtcAmountFromUsdc(mebtcUsdc)
+      if (mebtcAmount && mebtcAmount > 0n) {
+        const ok = await ensureMebtcForUpgrade(mebtcAmount)
+        if (!ok) return
+      }
+    }
+  }
+  await requestUpgradePowerBatch(tokenIds, mebtcShareBps)
+}
+
+async function upgradeHashBatchWithApproval(tokenIds: bigint[], mebtcShareBps: number, totalCost: bigint) {
+  if (!tokenIds.length) throw new Error('keine tokenIds')
+  const cost = totalCost
+  if (cost > 0n) {
+    const share = Math.max(0, Math.min(3000, Math.floor(mebtcShareBps)))
+    const mebtcUsdc = (cost * BigInt(share)) / 10_000n
+    const usdcPart = cost - mebtcUsdc
+    if (usdcPart > 0n) {
+      const ok = await ensurePayTokenForMiner(usdcPart)
+      if (!ok) return
+    }
+    if (share > 0) {
+      const mebtcAmount = calcMebtcAmountFromUsdc(mebtcUsdc)
+      if (mebtcAmount && mebtcAmount > 0n) {
+        const ok = await ensureMebtcForUpgrade(mebtcAmount)
+        if (!ok) return
+      }
+    }
+  }
+  await requestUpgradeHashBatch(tokenIds, mebtcShareBps)
+}
+
 async function claimWithApproval(mebtcShareBps: number) {
   const fee = totalFeeSelected.value
   const share = Math.max(0, Math.min(3000, Math.floor(mebtcShareBps)))
@@ -719,6 +765,8 @@ const headerMeta = computed(() => {
             :onBuyModel="buyFromModelWithApproval"
             :onUpgradePower="upgradePowerWithApproval"
             :onUpgradeHash="upgradeHashWithApproval"
+            :onUpgradePowerBatch="upgradePowerBatchWithApproval"
+            :onUpgradeHashBatch="upgradeHashBatchWithApproval"
             :mebtcUpgradeAllowanceText="mebtcUpgradeAllowanceText()"
             :payTokenSymbol="payTokenSymbol"
             :payTokenDecimals="payTokenDecimals"
