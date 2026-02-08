@@ -25,5 +25,22 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/fuji/, '/ext/bc/C/rpc')
       }
     }
+  },
+
+  build: {
+    // Reduce noise for large vendor bundles (walletconnect/viem/etc.).
+    chunkSizeWarningLimit: 2500,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        const msg = String((warning as any)?.message ?? '')
+        if (
+          (warning as any)?.code === 'INVALID_ANNOTATION' &&
+          msg.includes('/*#__PURE__*/')
+        ) {
+          return
+        }
+        warn(warning)
+      }
+    }
   }
 })

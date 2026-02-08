@@ -46,6 +46,10 @@ const tierLabel = computed(() => {
   return `Tier ${props.tier}`
 })
 
+function safeCall(fn: () => Promise<unknown> | unknown) {
+  Promise.resolve(fn()).catch(() => {})
+}
+
 </script>
 
 <template>
@@ -87,12 +91,12 @@ const tierLabel = computed(() => {
           {{ opt.label }}: {{ opt.bonus }} (Lock {{ opt.lock }})
         </div>
       </div>
-      <Button :disabled="disabled || busy" @click="() => onStake(amount).catch(() => {})">
+      <Button :disabled="disabled || busy" @click="() => safeCall(() => onStake(amount))">
         Stake
       </Button>
       <Button
         :disabled="disabled || busy || isLocked"
-        @click="() => onUnstake(amount).catch(() => {})"
+        @click="() => safeCall(() => onUnstake(amount))"
       >
         Unstake
       </Button>

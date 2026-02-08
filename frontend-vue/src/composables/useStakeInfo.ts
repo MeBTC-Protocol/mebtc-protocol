@@ -33,7 +33,7 @@ export function useStakeInfo() {
     loading.value = true
     try {
       const p = readProvider.value
-      const vault = new Contract(ADDRESSES.stakeVault, stakeVaultAbi, p)
+      const vault = new Contract(ADDRESSES.stakeVault, stakeVaultAbi, p) as any
       const res = await vault.getStakeInfo(a)
       if (rid !== requestId) return
       balance.value = res[0] as bigint

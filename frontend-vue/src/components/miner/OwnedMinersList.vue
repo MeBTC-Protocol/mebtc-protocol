@@ -5,6 +5,7 @@ import { useMinerNftData } from '../../composables/useMinerNftData'
 import type { MinerDataState } from '../../composables/useMinerNftData'
 import { useMinerUpgradeStates } from '../../composables/useMinerUpgradeStates'
 import ErrorPopupInline from '../common/ErrorPopupInline.vue'
+import { formatHashRateFromGh } from '../../utils/hashrate'
 
 const props = defineProps<{
   disabled: boolean
@@ -93,7 +94,8 @@ function nameFor(id: string) {
   if (!st) return `#${id}`
   if (st.status === 'loading') return `#${id} (loading…)`
   if (st.status === 'error') return `#${id}`
-  return st.meta.name || `#${id}`
+  if (st.status === 'ok') return st.meta.name || `#${id}`
+  return `#${id}`
 }
 
 function imgFor(id: string) {
@@ -108,7 +110,7 @@ function dataFor(id: string) {
 
 function hashFor(id: string) {
   const st = dataStates.value[id]
-  return st && st.status === 'ok' ? st.effHash.toString() : ''
+  return st && st.status === 'ok' ? st.effHash : null
 }
 
 function powerFor(id: string) {
@@ -118,10 +120,10 @@ function powerFor(id: string) {
 
 function hashWithBonusFor(id: string) {
   const st = dataStates.value[id]
-  if (!st || st.status !== 'ok') return ''
+  if (!st || st.status !== 'ok') return null
   const bps = BigInt(Math.max(0, props.hashBonusBps || 0))
   const num = st.effHash * (10_000n + bps)
-  return (num / 10_000n).toString()
+  return num / 10_000n
 }
 
 function powerWithBonusFor(id: string) {
@@ -135,7 +137,9 @@ function powerWithBonusFor(id: string) {
 }
 
 function displayHash(id: string) {
-  return (props.stakeTier ?? 0) > 0 ? hashWithBonusFor(id) : hashFor(id)
+  const value = (props.stakeTier ?? 0) > 0 ? hashWithBonusFor(id) : hashFor(id)
+  if (value === null) return ''
+  return formatHashRateFromGh(value)
 }
 
 function displayPower(id: string) {
@@ -149,6 +153,41 @@ function errorFor(id: string) {
   return st && st.status === 'error' ? st.error : ''
 }
 
+function metaErrorFor(id: string) {
+  const st = states.value[id]
+  return st && st.status === 'error' ? st.error : ''
+}
+
+function upgradeErrorFor(id: string) {
+  const st = upgradeStates.value[id]
+  return st && st.status === 'error' ? st.error : ''
+}
+
+function upgradeStateOk(id: string) {
+  const st = upgradeStates.value[id]
+  return st && st.status === 'ok' ? st : null
+}
+
+function upgradePowerActiveFor(id: string) {
+  return upgradeStateOk(id)?.powerActiveSteps ?? 0
+}
+
+function upgradePowerPendingFor(id: string) {
+  return upgradeStateOk(id)?.powerPendingSteps ?? 0
+}
+
+function upgradeHashActiveFor(id: string) {
+  return upgradeStateOk(id)?.hashActiveSteps ?? 0
+}
+
+function upgradeHashPendingFor(id: string) {
+  return upgradeStateOk(id)?.hashPendingSteps ?? 0
+}
+
+function upgradeMaxStepsFor(id: string) {
+  return upgradeStateOk(id)?.maxSteps ?? 0
+}
+
 function groupName(group: { repId: string | null; label: string }) {
   const repId = group.repId
   if (!repId) return group.label
@@ -156,7 +195,8 @@ function groupName(group: { repId: string | null; label: string }) {
   if (!st) return group.label
   if (st.status === 'loading') return 'Miner (loading…)'
   if (st.status === 'error') return group.label
-  return st.meta.name || group.label
+  if (st.status === 'ok') return st.meta.name || group.label
+  return group.label
 }
 
 function groupImage(group: { repId: string | null }) {
@@ -270,7 +310,7 @@ function minerCardClass(id: string) {
               <span v-if="states[id.toString()]?.status === 'loading'">loading metadata…</span>
               <ErrorPopupInline
                 v-else-if="states[id.toString()]?.status === 'error'"
-                :error="states[id.toString()]?.error ?? ''"
+                :error="metaErrorFor(id.toString())"
                 context="Miner Metadata"
               />
             </div>
@@ -290,23 +330,23 @@ function minerCardClass(id: string) {
               <span v-if="upgradeStates[id.toString()]?.status === 'loading'">loading upgrades…</span>
               <ErrorPopupInline
                 v-else-if="upgradeStates[id.toString()]?.status === 'error'"
-                :error="upgradeStates[id.toString()]?.error ?? ''"
+                :error="upgradeErrorFor(id.toString())"
                 context="Upgrade Status"
               />
               <span v-else-if="upgradeStates[id.toString()]?.status === 'ok'">
-                upgrade:Power {{ upgradeStates[id.toString()]?.powerActiveSteps }}/{{ upgradeStates[id.toString()]?.maxSteps }}
+                upgrade:Power {{ upgradePowerActiveFor(id.toString()) }}/{{ upgradeMaxStepsFor(id.toString()) }}
                 <span
-                  v-if="(upgradeStates[id.toString()]?.powerPendingSteps ?? 0) > 0"
+                  v-if="upgradePowerPendingFor(id.toString()) > 0"
                   class="upgrade-pending"
                 >
-                  (+{{ upgradeStates[id.toString()]?.powerPendingSteps }} pending)
+                  (+{{ upgradePowerPendingFor(id.toString()) }} pending)
                 </span>
-                |Hash {{ upgradeStates[id.toString()]?.hashActiveSteps }}/{{ upgradeStates[id.toString()]?.maxSteps }}
+                |Hash {{ upgradeHashActiveFor(id.toString()) }}/{{ upgradeMaxStepsFor(id.toString()) }}
                 <span
-                  v-if="(upgradeStates[id.toString()]?.hashPendingSteps ?? 0) > 0"
+                  v-if="upgradeHashPendingFor(id.toString()) > 0"
                   class="upgrade-pending"
                 >
-                  (+{{ upgradeStates[id.toString()]?.hashPendingSteps }} pending)
+                  (+{{ upgradeHashPendingFor(id.toString()) }} pending)
                 </span>
               </span>
             </div>

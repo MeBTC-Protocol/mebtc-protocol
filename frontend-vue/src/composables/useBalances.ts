@@ -36,9 +36,9 @@ export function useBalances() {
     try {
       const p = readProvider.value
 
-      const mebtcC = new Contract(ADDRESSES.mebtc, ERC20_ABI, p)
+      const mebtcC = new Contract(ADDRESSES.mebtc, ERC20_ABI, p) as any
       const token = payTokenAddress.value || (await fetchPayTokenAddress(p))
-      const payTokenC = new Contract(token, ERC20_ABI, p)
+      const payTokenC = new Contract(token, ERC20_ABI, p) as any
 
       const [mebtcRes, payRes] = await Promise.all([
         mebtcC.balanceOf(a),

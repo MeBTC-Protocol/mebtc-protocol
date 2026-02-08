@@ -28,7 +28,7 @@ export function useApproveUSDC() {
     try {
       const signer = await getSigner()
       const token = await fetchPayTokenAddress(readProvider.value)
-      const payToken = new Contract(token, ERC20_ABI, signer)
+      const payToken = new Contract(token, ERC20_ABI, signer) as any
       const tx = await payToken.approve(spender, amount)
       lastTx.value = tx.hash
       await tx.wait()

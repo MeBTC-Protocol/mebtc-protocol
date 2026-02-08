@@ -1,6 +1,6 @@
 import { Contract, parseUnits } from 'ethers'
 import type { JsonRpcProvider, Signer } from 'ethers'
-import { ADDRESSES, TOKENS } from '../contracts/addresses'
+import { ADDRESSES } from '../contracts/addresses'
 
 const ROUTER_ABI = [
   'function removeLiquidity(address tokenA,address tokenB,uint liquidity,uint amountAMin,uint amountBMin,address to,uint deadline) returns (uint amountA,uint amountB)'
@@ -26,7 +26,7 @@ export async function removeLiquidity(params: {
   const lp = parseUnits(lpAmount, LP_DECIMALS)
   if (lp <= 0n) throw new Error('betrag muss > 0 sein')
 
-  const pair = new Contract(ADDRESSES.pair, PAIR_ABI, provider)
+  const pair = new Contract(ADDRESSES.pair, PAIR_ABI, provider) as any
   const [totalSupply, token0, reserves] = await Promise.all([
     pair.totalSupply(),
     pair.token0(),
@@ -50,7 +50,7 @@ export async function removeLiquidity(params: {
   const minMebtc = (expMebtc * BigInt(10_000 - slippageBps)) / 10_000n
   const deadline = Math.floor(Date.now() / 1000) + 1200
 
-  const router = new Contract(ADDRESSES.router, ROUTER_ABI, signer)
+  const router = new Contract(ADDRESSES.router, ROUTER_ABI, signer) as any
   const tx = await router.removeLiquidity(
     ADDRESSES.usdc,
     ADDRESSES.mebtc,

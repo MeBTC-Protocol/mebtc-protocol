@@ -28,7 +28,7 @@ export function useMebtcManagerAllowance() {
     loading.value = true
     try {
       const readAllowance = async (p: any) => {
-        const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p)
+        const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p) as any
         const res = await mebtc.allowance(a, ADDRESSES.miningManager)
         if (rid !== requestId) return
         allowance.value = res as bigint

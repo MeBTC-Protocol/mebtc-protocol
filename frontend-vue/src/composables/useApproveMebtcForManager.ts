@@ -26,7 +26,7 @@ export function useApproveMebtcForManager() {
     busy.value = true
     try {
       const signer = await getSigner()
-      const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, signer)
+      const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, signer) as any
       const tx = await mebtc.approve(ADDRESSES.miningManager, amount)
       lastTx.value = tx.hash
       await tx.wait()

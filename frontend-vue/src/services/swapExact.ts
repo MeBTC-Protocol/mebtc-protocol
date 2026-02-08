@@ -30,7 +30,7 @@ export async function swapExactTokens(params: {
   }
 
   const deadline = Math.floor(Date.now() / 1000) + 1200
-  const router = new Contract(ADDRESSES.router, ROUTER_ABI, signer)
+  const router = new Contract(ADDRESSES.router, ROUTER_ABI, signer) as any
   const tx = await router.swapExactTokensForTokens(
     inAmount,
     minOutAmount,

@@ -5,6 +5,7 @@ import Card from '../common/Card.vue'
 import { TOKENS } from '../../contracts/addresses'
 import OwnedMinersList from '../miner/OwnedMinersList.vue'
 import { useMinerNftData } from '../../composables/useMinerNftData'
+import { formatHashRateFromGh } from '../../utils/hashrate'
 
 const props = defineProps<{
   mebtc: bigint
@@ -40,28 +41,6 @@ const totalHash = computed(() => {
   return total
 })
 
-function formatHashRate(value: bigint) {
-  const units = ['Hash/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s']
-  const base = 1_000n
-
-  let unitIndex = 0
-  let scaled = value
-  while (scaled >= base && unitIndex < units.length - 1) {
-    scaled = scaled / base
-    unitIndex++
-  }
-
-  const denom = base ** BigInt(unitIndex)
-  if (denom === 0n) return `${value.toString()} Hash/s`
-
-  if (unitIndex === 0) return `${value.toString()} ${units[unitIndex]}`
-
-  const whole = value / denom
-  const frac = ((value % denom) * 100n) / denom
-  const fracText = frac.toString().padStart(2, '0')
-  return `${whole.toString()}.${fracText} ${units[unitIndex]}`
-}
-
 const totalHashText = computed(() => {
   if (ids.value.length === 0) return '0'
 
@@ -77,7 +56,7 @@ const totalHashText = computed(() => {
   if (anyLoading) suffix = ' (loading…)'
   else if (anyError) suffix = ' (teilweise)'
 
-  return `${formatHashRate(totalHash.value)}${suffix}`
+  return `${formatHashRateFromGh(totalHash.value)}${suffix}`
 })
 
 const bonusActive = computed(() => (props.stakeTier ?? 0) > 0)

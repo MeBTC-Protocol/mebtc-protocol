@@ -26,7 +26,7 @@ export function useMinerActions() {
   const error = ref('')
   const lastTx = ref('')
 
-  async function withSigner<T>(fn: (miner: Contract) => Promise<T>): Promise<T> {
+  async function withSigner<T>(fn: (miner: any) => Promise<T>): Promise<T> {
     error.value = ''
     lastTx.value = ''
 
@@ -36,7 +36,7 @@ export function useMinerActions() {
     busy.value = true
     try {
       const signer = await w.getSigner()
-      const miner = new Contract(ADDRESSES.minerNft, MINER_ACTION_ABI, signer)
+      const miner = new Contract(ADDRESSES.minerNft, MINER_ACTION_ABI, signer) as any
       const res = await fn(miner)
       return res
     } catch (e: any) {

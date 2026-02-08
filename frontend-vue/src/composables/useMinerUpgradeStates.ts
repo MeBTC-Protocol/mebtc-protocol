@@ -33,14 +33,14 @@ export function useMinerUpgradeStates(getTokenIds: () => bigint[]) {
     const ids = getTokenIds() || []
     if (ids.length === 0) return
 
-    const miner = new Contract(ADDRESSES.minerNft, MINER_STATE_ABI, readProvider.value)
-    let fallbackMiner: Contract | null = null
+    const miner = new Contract(ADDRESSES.minerNft, MINER_STATE_ABI, readProvider.value) as any
+    let fallbackMiner: any | null = null
 
     function getFallbackMiner() {
       if (fallbackMiner) return fallbackMiner
       const bp = browserProvider.value
       if (!hasWalletProvider.value || !onChain.value || !bp) return null
-      fallbackMiner = new Contract(ADDRESSES.minerNft, MINER_STATE_ABI, bp)
+      fallbackMiner = new Contract(ADDRESSES.minerNft, MINER_STATE_ABI, bp) as any
       return fallbackMiner
     }
 

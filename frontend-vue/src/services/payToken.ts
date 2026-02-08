@@ -4,7 +4,7 @@ import { ADDRESSES, TOKENS } from '../contracts/addresses'
 import { miningManagerAbi } from '../contracts/abi'
 
 export async function fetchPayTokenAddress(provider: Provider): Promise<string> {
-  const manager = new Contract(ADDRESSES.miningManager, miningManagerAbi, provider)
+  const manager = new Contract(ADDRESSES.miningManager, miningManagerAbi, provider) as any
   try {
     return await manager.payToken()
   } catch {
@@ -23,10 +23,10 @@ export async function fetchPayTokenMeta(provider: Provider): Promise<{
   decimals: number
 }> {
   const address = await fetchPayTokenAddress(provider)
-  const token = new Contract(address, ERC20_META_ABI, provider)
+  const token = new Contract(address, ERC20_META_ABI, provider) as any
 
   let symbol = TOKENS.usdc.symbol
-  let decimals = TOKENS.usdc.decimals
+  let decimals: number = TOKENS.usdc.decimals
 
   try {
     symbol = await token.symbol()

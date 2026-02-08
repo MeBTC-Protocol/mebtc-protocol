@@ -80,11 +80,11 @@ export function useMiningStats(firstMinerId: bigint = 1n) {
 
     try {
       const p = readProvider.value
-      const mebtc = new Contract(ADDRESSES.mebtc, ME_BTC_ABI, p)
-      const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p)
-      const miner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, p)
-      const manager = new Contract(ADDRESSES.miningManager, MANAGER_ABI, p)
-      const pair = new Contract(ADDRESSES.pair, PAIR_ABI, p)
+      const mebtc = new Contract(ADDRESSES.mebtc, ME_BTC_ABI, p) as any
+      const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p) as any
+      const miner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, p) as any
+      const manager = new Contract(ADDRESSES.miningManager, MANAGER_ABI, p) as any
+      const pair = new Contract(ADDRESSES.pair, PAIR_ABI, p) as any
 
       const [supply, data, nextId, staked, feeMebtc, demandUsdc, token0, reserves, totalHash] = await Promise.all([
         mebtc.totalSupply(),

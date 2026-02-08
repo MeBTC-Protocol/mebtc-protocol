@@ -39,7 +39,7 @@ export function useLpPosition() {
     loading.value = true
     try {
       const p = readProvider.value
-      const pair = new Contract(ADDRESSES.pair, PAIR_ABI, p)
+      const pair = new Contract(ADDRESSES.pair, PAIR_ABI, p) as any
       const [balance, totalSupply, token0, reserves] = await Promise.all([
         pair.balanceOf(a),
         pair.totalSupply(),

@@ -13,7 +13,7 @@ export function useStakeActions() {
   const error = ref('')
   const lastTx = ref('')
 
-  async function withSigner<T>(fn: (vault: Contract) => Promise<T>): Promise<T> {
+  async function withSigner<T>(fn: (vault: any) => Promise<T>): Promise<T> {
     error.value = ''
     lastTx.value = ''
 
@@ -23,7 +23,7 @@ export function useStakeActions() {
     busy.value = true
     try {
       const signer = await getSigner()
-      const vault = new Contract(ADDRESSES.stakeVault, stakeVaultAbi, signer)
+      const vault = new Contract(ADDRESSES.stakeVault, stakeVaultAbi, signer) as any
       return await fn(vault)
     } catch (e: any) {
       error.value = e?.shortMessage ?? e?.message ?? String(e)

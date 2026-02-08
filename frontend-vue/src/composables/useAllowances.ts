@@ -34,7 +34,7 @@ export function useAllowances() {
     try {
       const readAllowances = async (p: any) => {
         const token = await fetchPayTokenAddress(p)
-        const payToken = new Contract(token, ERC20_ABI, p)
+        const payToken = new Contract(token, ERC20_ABI, p) as any
 
         const [minerRes, managerRes] = await Promise.all([
           payToken.allowance(a, ADDRESSES.minerNft),

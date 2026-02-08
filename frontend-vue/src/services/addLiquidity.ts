@@ -13,7 +13,7 @@ export async function addLiquidity(params: {
   mebtcAmount: string
   slippageBps?: number
 }): Promise<{ txHash: string }> {
-  const { provider, signer, usdcAmount, mebtcAmount, slippageBps = 100 } = params
+  const { signer, usdcAmount, mebtcAmount, slippageBps = 100 } = params
 
   const usdc = parseUnits(usdcAmount, TOKENS.usdc.decimals)
   const mebtc = parseUnits(mebtcAmount, TOKENS.mebtc.decimals)
@@ -24,7 +24,7 @@ export async function addLiquidity(params: {
   const minMebtc = (mebtc * BigInt(10_000 - slippageBps)) / 10_000n
   const deadline = Math.floor(Date.now() / 1000) + 1200
 
-  const router = new Contract(ADDRESSES.router, ROUTER_ABI, signer)
+  const router = new Contract(ADDRESSES.router, ROUTER_ABI, signer) as any
   const tx = await router.addLiquidity(
     ADDRESSES.usdc,
     ADDRESSES.mebtc,

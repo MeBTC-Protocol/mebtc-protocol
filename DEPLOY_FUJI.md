@@ -53,6 +53,11 @@ TWAP_ORACLE
 ```
 
 ### 5) After Deploy
+0) **Verify Manager is set on MinerNFT (MUST be before any mint/buy)**
+- The deploy script calls `miner.setManager(manager)` automatically.
+- If `manager` is not set, **do not mint/buy** (Manager totals will be wrong).
+  Fix by setting manager first. (Mint/buy will revert if manager is missing.)
+
 1) **Setup miner models**
 ```bash
 forge script script/SetupModels.s.sol:SetupModels \
@@ -79,6 +84,10 @@ USDC_ADDRESS
 MODEL_ID
 QTY
 ```
+
+If you ever change the `manager` address later, **resync all existing miners**
+using `resyncMiner(tokenId)`, otherwise `totalEffectiveHash` and rewards will be wrong.
+In normal flow with a fixed manager, no resync is needed.
 
 3) **Add initial liquidity (to create pool & TWAP)**
 - Use Trader Joe UI on Fuji and add liquidity to the MeBTC/USDC pair.

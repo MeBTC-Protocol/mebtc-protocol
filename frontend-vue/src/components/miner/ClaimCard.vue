@@ -35,6 +35,10 @@ function toggle(id: bigint, checked: boolean) {
   const key = id.toString()
   props.setSelected({ ...props.selected, [key]: checked })
 }
+
+function safeCall(fn: () => Promise<unknown> | unknown) {
+  Promise.resolve(fn()).catch(() => {})
+}
 </script>
 
 <template>
@@ -42,7 +46,7 @@ function toggle(id: bigint, checked: boolean) {
     <div class="ui-row">
       <Button
         :disabled="disabled || busy"
-        @click="() => onClaim(mebtcShareBps).catch(() => {})"
+        @click="() => safeCall(() => onClaim(mebtcShareBps))"
       >
         Claim selected
       </Button>

@@ -14,7 +14,7 @@
 
 ### Standardbetraege (Default)
 - Buy: 1 Miner (ModelId 1)
-- Claim: nach 2 Slots (~20 Min)
+- Claim: nach 1-2 Slots (~10-20 Min)
 - Stake: 10_000 MeBTC
 - claimWithMebtc: 30% Fee-Split
 - Liquidity: 1_000 USDC + entsprechendes MeBTC
@@ -29,10 +29,11 @@ Info (Fuji RPC Referenz):
 ### 1) Grundfunktionen (UI)
 - [x] Wallet verbinden (Fuji)
 - [x] Miner kaufen (BasicMiner)
-- [x] 2 Slots warten (~20 Min), dann Claim
+- [x] 1-2 Slots warten (~10-20 Min), dann Claim
 - [x] MeBTC-Balance gestiegen
 - [x] DemandVault USDC gestiegen
 - [x] Mining-Stats zeigen neue Werte
+- [ ] Miner ist sofort aktiv (Hashrate/Power sichtbar, keine Pending-Aktivierung)
 
 ### 2) Staking
 - [ ] MeBTC Approve (StakeVault)
@@ -90,6 +91,7 @@ Info (Fuji RPC Referenz):
 - Buy Flow:
   - Approve -> Tx bestaetigt, Allowance im UI aktualisiert.
   - Buy -> Miner-ID sichtbar, DemandVault steigt, Stats refresh.
+  - Miner aktiv sofort (keine Retro-Rewards; Rewards erst ab naechstem vollen Slot).
 - Claim Flow:
   - Vor Slot -> UI blockiert oder zeigt "noch nicht".
   - Nach Slot -> Claim Tx ok, MeBTC-Balance erhoeht, Fees abgezogen.

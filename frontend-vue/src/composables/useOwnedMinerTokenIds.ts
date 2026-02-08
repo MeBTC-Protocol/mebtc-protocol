@@ -138,6 +138,7 @@ export function useOwnedMinerTokenIds() {
       msg.value = 'keine adresse'
       return
     }
+    const addr = address.value
 
     const cacheKey = getCacheKey(address.value)
     const cached = cacheKey ? readCache(cacheKey) : undefined
@@ -148,9 +149,9 @@ export function useOwnedMinerTokenIds() {
     busy.value = true
     try {
       const runScan = async (p: any) => {
-        const miner = new Contract(ADDRESSES.minerNft, MINER_ABI, p)
+        const miner = new Contract(ADDRESSES.minerNft, MINER_ABI, p) as any
 
-        const user = getAddress(address.value)
+        const user = getAddress(addr)
 
         // Transfer(address,address,uint256)
         const transferTopic = keccakId('Transfer(address,address,uint256)')

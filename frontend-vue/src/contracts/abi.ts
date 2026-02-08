@@ -99,6 +99,13 @@ export const miningManagerAbi = [
       { name: 'reward', type: 'uint256' },
       { name: 'feeUSDC', type: 'uint256' }
     ]
+  },
+  {
+    type: 'function',
+    name: 'resyncMiner',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: []
   }
 ] as const
 

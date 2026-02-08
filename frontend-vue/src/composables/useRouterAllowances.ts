@@ -32,9 +32,9 @@ export function useRouterAllowances() {
     loading.value = true
     try {
       const readAllowances = async (p: any) => {
-        const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p)
-        const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p)
-        const lp = new Contract(ADDRESSES.pair, ERC20_ABI, p)
+        const usdc = new Contract(ADDRESSES.usdc, ERC20_ABI, p) as any
+        const mebtc = new Contract(ADDRESSES.mebtc, ERC20_ABI, p) as any
+        const lp = new Contract(ADDRESSES.pair, ERC20_ABI, p) as any
 
         const [u, m, l] = await Promise.all([
           usdc.allowance(a, ADDRESSES.router),

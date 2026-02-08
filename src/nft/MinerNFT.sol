@@ -145,6 +145,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     // --------- admin ----------
     function setManager(address _manager) external onlyOwner {
+        require(_manager != address(0), "manager=0");
         manager = IMiningManagerHook(_manager);
         emit ManagerSet(_manager);
     }
@@ -271,6 +272,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     // --------- buying ----------
     function buyFromModel(uint16 modelId, uint256 quantity) external nonReentrant returns (uint256 firstTokenId) {
+        require(address(manager) != address(0), "manager=0");
         require(quantity > 0, "qty=0");
         Model storage m = models[modelId];
         require(m.maxSupply > 0, "model!");

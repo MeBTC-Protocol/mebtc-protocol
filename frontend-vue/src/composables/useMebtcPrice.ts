@@ -32,7 +32,7 @@ export function useMebtcPrice() {
 
     try {
       const p = readProvider.value
-      const twap = new Contract(ADDRESSES.twapOracle, TWAP_ABI, p)
+      const twap = new Contract(ADDRESSES.twapOracle, TWAP_ABI, p) as any
 
       try {
         const ready = await twap.isReady()
@@ -46,7 +46,7 @@ export function useMebtcPrice() {
         // fallback to pool spot price
       }
 
-      const pair = new Contract(ADDRESSES.pair, PAIR_ABI, p)
+      const pair = new Contract(ADDRESSES.pair, PAIR_ABI, p) as any
       const [token0, reserves] = await Promise.all([pair.token0(), pair.getReserves()])
 
       const r0 = reserves?.[0] as bigint

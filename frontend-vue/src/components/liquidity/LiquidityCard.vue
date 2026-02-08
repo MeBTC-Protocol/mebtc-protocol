@@ -73,6 +73,10 @@ function updateFromMebtc() {
   } catch {}
 }
 
+function safeCall(fn: () => Promise<unknown> | unknown) {
+  Promise.resolve(fn()).catch(() => {})
+}
+
 watch([usdcAmount, () => props.poolUsdc, () => props.poolMebtc], () => {
   if (internalUpdate.value || lastEdited.value !== "usdc") return
   updateFromUsdc()
@@ -125,7 +129,7 @@ function onMebtcInput() {
     <div class="ui-row">
       <Button
         :disabled="disabled || busy"
-        @click="() => onAddLiquidity(usdcAmount, mebtcAmount).catch(() => {})"
+        @click="() => safeCall(() => onAddLiquidity(usdcAmount, mebtcAmount))"
       >
         Add Liquidity
       </Button>
@@ -145,7 +149,7 @@ function onMebtcInput() {
       </Button>
       <Button
         :disabled="disabled || busy"
-        @click="() => onRemoveLiquidity(lpAmount).catch(() => {})"
+        @click="() => safeCall(() => onRemoveLiquidity(lpAmount))"
       >
         Remove Liquidity
       </Button>

@@ -13,21 +13,21 @@ export type ClaimPreview = {
 }
 
 function miningManagerRead(provider: JsonRpcProvider) {
-  return new Contract(ADDRESSES.miningManager, miningManagerAbi, provider)
+  return new Contract(ADDRESSES.miningManager, miningManagerAbi, provider) as any
 }
 
 function miningManagerWrite(signer: Signer) {
-  return new Contract(ADDRESSES.miningManager, miningManagerAbi, signer)
+  return new Contract(ADDRESSES.miningManager, miningManagerAbi, signer) as any
 }
 
 async function payTokenRead(provider: JsonRpcProvider) {
   const token = await fetchPayTokenAddress(provider)
-  return new Contract(token, erc20Abi, provider)
+  return new Contract(token, erc20Abi, provider) as any
 }
 
 async function payTokenWrite(provider: JsonRpcProvider, signer: Signer) {
   const token = await fetchPayTokenAddress(provider)
-  return new Contract(token, erc20Abi, signer)
+  return new Contract(token, erc20Abi, signer) as any
 }
 
 /**

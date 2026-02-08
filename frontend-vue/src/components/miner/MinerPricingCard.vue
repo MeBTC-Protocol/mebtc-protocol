@@ -6,6 +6,7 @@ import Button from '../common/Button.vue'
 import ErrorPopupInline from '../common/ErrorPopupInline.vue'
 import { useMinerModels } from '../../composables/useMinerModels'
 import { useMinerUpgradeStates } from '../../composables/useMinerUpgradeStates'
+import { formatHashRateFromGh } from '../../utils/hashrate'
 
 const emit = defineEmits<{
   (e: 'approve-stats', payload: { missing: bigint; endValue: bigint }): void
@@ -79,6 +80,15 @@ const approveEndValue = computed(() => bn(props.allowanceMiner) + missingForBuy.
 
 const powerCosts = computed(() => (selectedModel.value?.powerStepCost ?? []).map(bn))
 const hashCosts  = computed(() => (selectedModel.value?.hashStepCost  ?? []).map(bn))
+const selectedModelHashText = computed(() => {
+  const v = selectedModel.value?.baseHashrate
+  if (typeof v !== 'number') return '-'
+  try {
+    return formatHashRateFromGh(BigInt(v))
+  } catch {
+    return '-'
+  }
+})
 
 function parsedUpgradeTokenId(): bigint | null {
   try {
@@ -174,8 +184,11 @@ const batchPower = computed(() => {
   let total = 0n
   for (const id of ids) {
     const st = batchUpgradeStates.value[id.toString()]
-    if (!st || st.status === 'loading') return { ready: false, total: 0n, reason: 'lade states…' }
+    if (!st || st.status === 'loading' || st.status === 'idle') {
+      return { ready: false, total: 0n, reason: 'lade states…' }
+    }
     if (st.status === 'error') return { ready: false, total: 0n, reason: `fehler bei #${id}` }
+    if (st.status !== 'ok') return { ready: false, total: 0n, reason: 'lade states…' }
     const model = modelById.value.get(st.modelId)
     if (!model) return { ready: false, total: 0n, reason: `model ${st.modelId} fehlt` }
     const idx = st.powerActiveSteps + st.powerPendingSteps
@@ -195,8 +208,11 @@ const batchHash = computed(() => {
   let total = 0n
   for (const id of ids) {
     const st = batchUpgradeStates.value[id.toString()]
-    if (!st || st.status === 'loading') return { ready: false, total: 0n, reason: 'lade states…' }
+    if (!st || st.status === 'loading' || st.status === 'idle') {
+      return { ready: false, total: 0n, reason: 'lade states…' }
+    }
     if (st.status === 'error') return { ready: false, total: 0n, reason: `fehler bei #${id}` }
+    if (st.status !== 'ok') return { ready: false, total: 0n, reason: 'lade states…' }
     const model = modelById.value.get(st.modelId)
     if (!model) return { ready: false, total: 0n, reason: `model ${st.modelId} fehlt` }
     const idx = st.hashActiveSteps + st.hashPendingSteps
@@ -264,7 +280,7 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
 
       <div v-if="selectedModel" class="ui-muted" style="margin-top:10px;">
         <div>
-          hashrate: {{ selectedModel.baseHashrate }} | power: {{ selectedModel.basePowerWatt }}W
+          hashrate: {{ selectedModelHashText }} | power: {{ selectedModel.basePowerWatt }}W
         </div>
         <div>
           supply: {{ selectedModel.minted }} / {{ selectedModel.maxSupply }}

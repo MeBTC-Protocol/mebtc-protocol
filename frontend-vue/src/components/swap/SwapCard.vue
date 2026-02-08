@@ -93,6 +93,10 @@ const minOutText = computed(() => {
 function toggleDirection() {
   direction.value = direction.value === 'buy' ? 'sell' : 'buy'
 }
+
+function safeCall(fn: () => Promise<unknown> | unknown) {
+  Promise.resolve(fn()).catch(() => {})
+}
 </script>
 
 <template>
@@ -140,7 +144,7 @@ function toggleDirection() {
       <Button
         variant="solid"
         :disabled="disabled || busy || !amountIn"
-        @click="() => onSwap({ direction, amountIn, minOut: minOutText }).catch(() => {})"
+        @click="() => safeCall(() => onSwap({ direction, amountIn, minOut: minOutText }))"
       >
         Swap
       </Button>

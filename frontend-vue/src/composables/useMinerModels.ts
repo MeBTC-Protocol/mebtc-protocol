@@ -33,7 +33,7 @@ export function useMinerModels() {
     error.value = ''
     try {
       const p = readProvider.value
-      const miner = new Contract(ADDRESSES.minerNft, MINER_ABI, p)
+      const miner = new Contract(ADDRESSES.minerNft, MINER_ABI, p) as any
 
       const nextId = Number(await miner.nextModelId()) // nextModelId-1 ist letzter
       const out: MinerModel[] = []

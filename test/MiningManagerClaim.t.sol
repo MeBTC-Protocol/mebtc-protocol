@@ -77,4 +77,18 @@ contract MiningManagerClaimTest is MeBTCTestBase {
         assertEq(payToken.balanceOf(demandVault) - demandBefore, usdcPart);
         assertEq(mebtc.balanceOf(feeVaultMeBTC) - feeVaultBefore, mebtcAmount);
     }
+
+    function test_BuyFromModelSetsActiveImmediately() public {
+        uint256 ts = block.timestamp;
+        uint256 tokenId = _buyOne(user);
+
+        uint256 effHash = manager.currentEffHash(tokenId);
+        uint256 effPower = manager.currentEffPower(tokenId);
+
+        assertGt(effHash, 0);
+        assertGt(effPower, 0);
+        assertEq(manager.lastSettleTime(tokenId), ts);
+        assertEq(manager.lastClaimedBlockIndex(tokenId), manager.blockIndex());
+        assertEq(manager.totalEffectiveHash(), effHash);
+    }
 }

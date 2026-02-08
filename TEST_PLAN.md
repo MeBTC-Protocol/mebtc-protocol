@@ -104,6 +104,8 @@ Hinweise:
 - Fees und Auszahlungen summieren sich korrekt (DemandVault + FeeVaultMeBTC + User).
 - Vault-Balances werden nie negativ oder driften vom Accounting weg.
 - Nur autorisierte Rollen duerfen kritische Parameter aendern.
+- Keine Retro-Rewards: Miner sind beim Kauf sofort aktiv, Rewards erst ab dem naechsten vollen Intervall.
+- Bei totalEffectiveHash == 0 wird keine Emission nachgeholt; lastUpdate springt auf "jetzt".
 
 ### Detaillierte Contract-Invariants (MiningManager)
 - blockIndex steigt nur, wenn ein volles CLAIM_INTERVAL vergangen ist.
@@ -114,6 +116,7 @@ Hinweise:
 - Minted Rewards ueberschreiten nie MAX_SUPPLY; claim capped auf remaining supply.
 - Fee-Split: outF == usdcPart + mebtcPart; mebtcShareBps <= MAX_MEBTC_SHARE_BPS.
 - Bei mebtcShareBps > 0: TWAP muss ready sein und price > 0.
+- lastSettleTime wird beim ersten Setzen auf block.timestamp initialisiert (keine Aktivierungs-Pending-Phase).
 
 ## Testmatrix
 
@@ -131,10 +134,13 @@ Testskizzen pro Contract (Foundry):
   - test_claim_requires_slot()
   - test_halving_at_boundary()
   - test_no_emission_when_total_hash_zero()
+  - test_no_retro_rewards_on_first_miner()
   - test_fee_split_usdc_only()
   - test_fee_split_with_mebtc_price_ready()
 - MinerNFT:
-  - test_buy_from_model_sets_activation()
+  - test_buy_from_model_sets_active_immediately()
+  - test_buy_requires_manager_set()
+  - test_set_manager_zero_reverts()
   - test_apply_pending_upgrades_after_claim()
   - test_owner_transfer_updates_manager_tokens()
 - MeBTC:
@@ -158,6 +164,7 @@ Flows:
 Konkrete Tests (Integration):
 - Buy -> Claim: 1 Miner kaufen, 2 Intervalle warten, claim; Reward > 0 und Fee > 0.
 - Claim Slot: Direkt nach Kauf claimen -> revert "slot".
+- Buy Active: Nach Kauf sind EffHash/EffPower sofort aktiv (keine pending Aktivierung).
 - Upgrade Flow: Upgrade anstossen, vor dem Claim bleiben alte Stats aktiv; nach Claim neue Stats aktiv.
 - Multiple IDs: 2 Miner, batch claim; beide pendingRewards und debtUSDC werden genullt.
 - Stake Impact: Stake setzen, onStakeChange -> effHash/effPower aendern; Reward/Fees folgen.
@@ -179,6 +186,7 @@ Konkrete Tests:
 - Multi-Halving: nach 2 Halvings entspricht Reward INITIAL_REWARD / 4.
 - Long-Run Emission: simulierte Summe der Rewards <= Zeitplan und <= MAX_SUPPLY.
 - Keine Emission wenn totalEffectiveHash == 0 ueber mehrere Intervalle.
+- Erste Aktivierung: beim ersten Miner gibt es keine Emission fuer vergangene Zeit; Emission startet ab Kauf/naechstem Intervall.
 - preview vs claim: am gleichen Timestamp liefert preview das gleiche Ergebnis wie claim (keine State-Aenderung dazwischen).
 Erweiterte Tokenomics-Checks:
 - Emissionsformel: Summe der Rewards pro Intervall folgt geometrischer Reihe mit Halving.

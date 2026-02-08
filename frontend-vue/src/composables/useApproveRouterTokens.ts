@@ -26,7 +26,7 @@ export function useApproveRouterTokens() {
     busy.value = true
     try {
       const signer = await getSigner()
-      const erc20 = new Contract(token, ERC20_ABI, signer)
+      const erc20 = new Contract(token, ERC20_ABI, signer) as any
       const tx = await erc20.approve(ADDRESSES.router, amount)
       lastTx.value = tx.hash
       await tx.wait()

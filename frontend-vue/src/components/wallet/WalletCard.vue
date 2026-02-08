@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Card from '../common/Card.vue'
 import { shortAddr } from '../../utils/format'
 
 defineProps<{

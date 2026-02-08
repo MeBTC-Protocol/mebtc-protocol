@@ -311,9 +311,6 @@ const approveManagerExactMissing = computed(() => {
     ? totalFeeSelected.value - allowanceManager.value
     : 0n
 })
-const approveManagerExactValue = computed(() => {
-  return allowanceManager.value + approveManagerExactMissing.value
-})
 
 const newsItems = ref([
   {
@@ -442,7 +439,7 @@ async function stakeFromInput(amount: string) {
   }
   let amt: bigint
   try {
-    amt = parseUnits(v, mebtcDecimals.value ?? TOKENS.mebtc.decimals)
+    amt = parseUnits(v, mebtcDecimals ?? TOKENS.mebtc.decimals)
   } catch {
     stakeInputError.value = 'ungueltiges format (z. B. 10000 oder 10000.5)'
     throw new Error('format')
@@ -461,7 +458,7 @@ async function unstakeFromInput(amount: string) {
   }
   let amt: bigint
   try {
-    amt = parseUnits(v, mebtcDecimals.value ?? TOKENS.mebtc.decimals)
+    amt = parseUnits(v, mebtcDecimals ?? TOKENS.mebtc.decimals)
   } catch {
     stakeInputError.value = 'ungueltiges format (z. B. 10000 oder 10000.5)'
     throw new Error('format')
@@ -491,7 +488,7 @@ function normalizeAmount(raw: string) {
       return parts.join('')
     }
     const last = parts[parts.length - 1]
-    if (last.length === 3 && parts.every(p => /^\d+$/.test(p))) {
+    if (last && last.length === 3 && parts.every(p => /^\d+$/.test(p))) {
       return parts.join('')
     }
   }

@@ -35,14 +35,14 @@ export function useMinerNftMetadata(getTokenIds: () => bigint[]) {
     // keep state for current ids; don't delete old ones (caching)
     if (ids.length === 0) return
 
-    const miner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, readProvider.value)
-    let fallbackMiner: Contract | null = null
+    const miner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, readProvider.value) as any
+    let fallbackMiner: any | null = null
 
     function getFallbackMiner() {
       if (fallbackMiner) return fallbackMiner
       const bp = browserProvider.value
       if (!hasWalletProvider.value || !onChain.value || !bp) return null
-      fallbackMiner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, bp)
+      fallbackMiner = new Contract(ADDRESSES.minerNft, MINER_NFT_ABI, bp) as any
       return fallbackMiner
     }
 
