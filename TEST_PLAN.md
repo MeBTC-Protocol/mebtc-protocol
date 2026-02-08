@@ -151,8 +151,20 @@ Testskizzen pro Contract (Foundry):
   - test_unstake_before_unlock_reverts()
   - test_onStakeChange_updates_eff_hash()
 - LiquidityEngine / TwapOracleJoeV2:
-  - test_execute_epoch_requires_ready_twap()
-  - test_twap_update_window()
+  - test_execute_epoch_requires_time()
+  - test_add_liquidity_caps_by_min()
+  - test_add_liquidity_respects_min_usdc()
+  - test_auto_compound_burns_and_mints_lp()
+  - test_is_ready_false_when_liquidity_low()
+  - test_is_ready_true_after_window()
+  - test_price_reverts_when_liquidity_low()
+  - test_price_reverts_when_window_not_elapsed()
+  - test_price_returns_expected_value()
+- TokenVault:
+  - test_init_only_initializer()
+  - test_init_requires_engine_nonzero()
+  - test_init_only_once()
+  - test_transfer_to_only_engine()
 
 ### B) Smart Contracts - Integration
 Wo: Lokales Anvil + Foundry [Anvil]
@@ -186,6 +198,28 @@ Konkrete Tests:
 - Multi-Halving: nach 2 Halvings entspricht Reward INITIAL_REWARD / 4.
 - Long-Run Emission: simulierte Summe der Rewards <= Zeitplan und <= MAX_SUPPLY.
 - Keine Emission wenn totalEffectiveHash == 0 ueber mehrere Intervalle.
+
+### D) Security & Adversarial
+Wo: Lokales Anvil + Mainnet-Fork [Anvil/Fork]
+Fokus:
+- Reentrancy-Szenarien bei claim/upgrade/stake/unstake (inkl. ERC777-aehnliche Tokens)
+- Access-Control Vollabdeckung: alle onlyOwner/onlyManager Funktionen negativ testen
+- Oracle-Manipulation: geringe Liquiditaet, zu kurzes TWAP-Window, Preis-Spruenge
+- Fee-Split/Decimals-Edge-Cases: 0%/100% mebtcShare, Rounding korrekt
+- Flash-Loan/MEV: Preis-Pump vor update/executeEpoch und Ruecklauf danach
+- NFT-Ownership-Edge-Cases: Transfer waehrend Pending/Claim/Upgrade
+- Non-Standard ERC20: fee-on-transfer, keine Return-Values
+- Allowance-Race: Approve 0 -> X Pattern; Allowance-Reset Verhalten
+- Pause/Rescue/Upgrade-Pfade (falls vorhanden) gegen unautorisierte Nutzung
+
+### E) Static Analysis (Slither/Mythril)
+Wo: Lokal [Anvil]
+Ziel:
+- Automatisches Auffinden von Reentrancy, unchecked transfers, schwache Zufallsquellen
+- Hinweise auf unklare Patterns (divide-before-multiply, strict equality, timestamp usage)
+Schritte:
+- Slither: `slither .`
+- Mythril: `myth analyze <contract.sol>` (fokussiert auf kritische Contracts)
 - Erste Aktivierung: beim ersten Miner gibt es keine Emission fuer vergangene Zeit; Emission startet ab Kauf/naechstem Intervall.
 - preview vs claim: am gleichen Timestamp liefert preview das gleiche Ergebnis wie claim (keine State-Aenderung dazwischen).
 Erweiterte Tokenomics-Checks:
@@ -235,6 +269,15 @@ Konkrete Tests (Performance/Load):
 - Load-Simulation: 10k Miner/1k Nutzer in Tests, Gas pro Claim messen, linear hochskalieren.
 - Block-Limit Check: maximal moegliche Claims pro Block aus Gaswerten ableiten.
 - Durchsatzgrenze: claims pro Minute basierend auf CLAIM_INTERVAL und Blockgas.
+
+### F2) Invariant/Fuzz (Foundry)
+Wo: Lokales Anvil [Anvil]
+Checks:
+- totalEffectiveHash == Summe currentEffHash ueber alle Miner
+- lastClaimedBlockIndex <= blockIndex
+- pendingRewardRemainder < 1e12
+- MeBTC totalSupply <= MAX_SUPPLY
+- NFT-Owner stimmt mit Handler-Tracking
 
 ### G) Frontend Security & UX
 Wo: Fuji [Fuji]
@@ -309,3 +352,27 @@ P2:
 
 P3:
 - Monitoring/Metriken + Alerts definieren und pruefen.
+
+## Status (Anvil)
+- [x] Foundry Test-Suite ausgefuehrt (Unit/Integration/Tokenomics/Security/Performance)
+- [x] Gas-Report erstellt
+- [x] Snapshot erstellt
+- [x] Coverage erstellt (script/ ausgeschlossen; Anchor-Warnungen vorhanden)
+- [x] Invariant Suite (MiningManager/Stake/MinerNFT Flow)
+
+## Status (Fork)
+- [ ] Fork Tests: blockiert (kein externer RPC erreichbar in dieser Umgebung)
+
+## Status (Static Analysis)
+- [x] Slither ausgefuehrt (2026-02-08)
+- [x] Slither Triage (Kernaussagen):
+- LiquidityEngine: unchecked transfer bei `_mintLiquidity` (USDC/MeBTC) -> optional SafeERC20
+- Reentrancy-Warnungen: MiningManager `claim` ist `nonReentrant`; LiquidityEngine reentrancy durch `lastEpoch` gating -> low risk
+- timestamp/strict-equality Hinweise: erwartete Zeit-Logik (Claims, Epochs, Locks)
+- External-calls-in-loop: akzeptiert (Batch-Funktionen/Manager Hooks)
+- [x] Mythril (Source-Level mit solc 0.8.26 + Remappings) ausgefuehrt
+- [x] Mythril Source-Level Ergebnisse:
+- MiningManager, MinerNFT, LiquidityEngine, TwapOracleJoeV2, MeBTC: keine Findings
+- StakeVault: SWC-116 (block.timestamp) in unstake (zeitbasiert, erwartet)
+- TokenVault: SWC-107 (external call to user-supplied address) bei token.transfer (nur Engine, erwartetes Pattern)
+- [x] Mythril Bytecode-Run (vor Source-Level) hatte viele SWC-101 False-Positives unter Solidity 0.8

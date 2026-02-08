@@ -3,6 +3,8 @@ out/
 cache/
 broadcast/
 .anvil/
+.mythril/
+.venv-mythril/
 
 # ---------- Node / Frontend ----------
 node_modules/

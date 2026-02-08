@@ -69,4 +69,14 @@ contract SecurityScenariosTest is MeBTCTestBase {
         vm.expectRevert();
         miner.setPayToken(address(alt));
     }
+
+    function test_OnMinerTransferOnlyMiner() public {
+        vm.expectRevert(bytes("!miner"));
+        manager.onMinerTransfer(user, user2, 1, 0);
+    }
+
+    function test_OnStakeChangeOnlyStakeVault() public {
+        vm.expectRevert(bytes("!stake"));
+        manager.onStakeChange(user);
+    }
 }

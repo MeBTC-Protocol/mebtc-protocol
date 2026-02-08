@@ -32,10 +32,17 @@ function formatTs(ts: bigint | null) {
     .replace('Z', ' UTC')
 }
 
+function pow10(decimals: number) {
+  let v = 1n
+  for (let i = 0; i < decimals; i++) v *= 10n
+  return v
+}
+
 function formatWhole(amount: bigint, decimals: number) {
-  const s = formatUnits(amount, decimals)
-  const i = s.indexOf('.')
-  return i === -1 ? s : s.slice(0, i)
+  if (decimals <= 0) return amount.toString()
+  const scale = pow10(decimals)
+  const rounded = (amount + scale / 2n) / scale
+  return rounded.toString()
 }
 
 function formatRemaining(seconds: number | null) {
