@@ -56,7 +56,7 @@ Hinweise:
 ## Mainnet-Fork E2E Varianten (Skizze)
 - E2E-Claim/Upgrade: reale LP/Oracle-Preise, Fee-Split mit echten TWAP-Daten pruefen.
 - Stress via Batch-Claims: gleiche Wallet, viele Miner, Gas/Throughput messen.
-- Oracle-Stale: Fork-Block alt -> TWAP nicht ready; UI/Tx sollen sauber failen.
+- Oracle-Stale: Fork-Block alt -> Fee-Preis stale; MeBTC-Fee faellt auf USDC-only.
 - Liquidity-Effekt: Add Liquidity (wenn moeglich) und Einfluss auf TWAP/Stats beobachten.
 - Replay-Realismus: gleicher Fork-Block fuer reproduzierbare Reports.
 
@@ -66,8 +66,8 @@ Hinweise:
 3) Miner kaufen: Approve -> Buy -> Tx ok; Vault/Stats aktualisieren.
 4) Claim testen: vor Slot -> revert; nach Slot -> Reward/Fees korrekt.
 5) Upgrade testen: Pending sichtbar -> Claim -> aktive Werte aktualisiert.
-6) claimWithMebtc: TWAP ready, price > 0; Fee-Split korrekt.
-7) Oracle-Stale: Fork-Block alt oder TWAP nicht ready -> Tx muss failen.
+6) claimWithMebtc: Fee-Split mit frischem TWAP-Cache; korrektes Split.
+7) Oracle-Stale: Fee-Preis stale -> USDC-only Fallback, kein Revert.
 8) Batch-Claim: viele Miner, Gas/Throughput messen.
 9) Bericht: Blocknummer, Tx-Hashes, beobachtete Werte dokumentieren.
 
@@ -115,7 +115,7 @@ Hinweise:
 - pendingReward/debtUSDC werden bei claim genullt und lastAccPerHash == accRewardPerEffHash danach.
 - Minted Rewards ueberschreiten nie MAX_SUPPLY; claim capped auf remaining supply.
 - Fee-Split: outF == usdcPart + mebtcPart; mebtcShareBps <= MAX_MEBTC_SHARE_BPS.
-- Bei mebtcShareBps > 0: TWAP muss ready sein und price > 0.
+- Bei mebtcShareBps > 0: TWAP-Cache muss frisch sein, sonst USDC-only Fallback.
 - lastSettleTime wird beim ersten Setzen auf block.timestamp initialisiert (keine Aktivierungs-Pending-Phase).
 
 ## Testmatrix
@@ -171,7 +171,7 @@ Wo: Lokales Anvil + Foundry [Anvil]
 Flows:
 - buy miner -> claim -> upgrade -> claim
 - stake -> lock -> unstake (early revert)
-- liquidity add -> TWAP update -> execute epoch
+- liquidity add -> TWAP-Update via Claim/Upgrade -> execute epoch
 - claimWithMebtc Fee-Split
 Konkrete Tests (Integration):
 - Buy -> Claim: 1 Miner kaufen, 2 Intervalle warten, claim; Reward > 0 und Fee > 0.
@@ -180,9 +180,9 @@ Konkrete Tests (Integration):
 - Upgrade Flow: Upgrade anstossen, vor dem Claim bleiben alte Stats aktiv; nach Claim neue Stats aktiv.
 - Multiple IDs: 2 Miner, batch claim; beide pendingRewards und debtUSDC werden genullt.
 - Stake Impact: Stake setzen, onStakeChange -> effHash/effPower aendern; Reward/Fees folgen.
-- ClaimWithMebtc: Fee-Split 30% mit TWAP ready; FeeVaultMeBTC steigt, DemandVault steigt um Rest.
+- ClaimWithMebtc: Fee-Split 30% mit frischem TWAP-Cache; FeeVaultMeBTC steigt, DemandVault steigt um Rest.
 - Edge: mebtcShareBps > MAX_MEBTC_SHARE_BPS -> revert.
-- Edge: TWAP not ready oder price=0 -> claimWithMebtc revert.
+- Edge: Fee-Preis stale oder price=0 -> USDC-only Fallback, kein Revert.
 Hinweise:
 - Vault-Balances und Rewards mit preview-Outputs abgleichen.
 
@@ -233,7 +233,7 @@ Erweiterte Tokenomics-Checks:
 ### D) Oracle & TWAP
 Wo: Mainnet-Fork [Fork]
 Checks:
-- TWAP-Readiness Window; Stale-Data Handling
+- TWAP-Cache Freshness; Stale-Data Handling (USDC-only Fallback)
 - Price-Manipulation Scenarios (low liquidity)
 - Update-Timing bei Liquidity-Changes
 
@@ -247,7 +247,7 @@ Threats:
 Konkrete Tests (Security):
 - Reentrancy: fuer claim/claimWithMebtc/upgrade/stake jeweils mit boesartigem Receiver.
 - Approval Abuse: allowance kleiner als fee -> revert; allowance gross -> exact transfer.
-- Oracle Manipulation: TWAP not ready, stale price, price=0; alle muessen sauber reverts geben.
+- Oracle Manipulation: Fee-Preis stale oder price=0 -> USDC-only Fallback, kein Revert.
 - MEV/Front-Run: claim vor Slot -> revert; upgrade vor claim -> alte Stats gelten.
 - DoS Arrays: sehr viele IDs im claim; Gas-Limit und graceful failure.
 - Ownership: Miner transfer -> ownerTokens korrekt; alter Owner kann nicht mehr claimen.
@@ -304,7 +304,7 @@ E2E Checkliste (Fuji, End-to-End):
 - Stake Flow: Approve -> Stake -> Lock-Timer sichtbar; Unstake vor Ablauf blockiert.
 - claimWithMebtc: Fee-Split angezeigt; MeBTC/USDC Balances korrekt; Vaults aktualisiert.
 - Liquidity: Approve -> Add Liquidity -> Pool-Reserven in Stats sichtbar.
-- TWAP/Epoch: Update/Execute (falls UI) -> Status-Update sichtbar.
+- TWAP/Epoch: Execute Epoch (TWAP-Update via Claim/Upgrade) -> Status-Update sichtbar.
 - Error Handling: Tx reject, RPC error, Timeout -> UI zeigt klare Fehler.
 - State Refresh: Page reload nach Tx -> korrekte Daten (keine stale cache).
 Hinweis: Detail-Checkliste und Pass/Fail in `TEST_ABLAUF_FUJI.md`.
@@ -318,7 +318,7 @@ Checks:
 Konkrete Metriken/Alerts:
 - Claim-Revert-Rate (slot/allowance/balance) mit Schwellenwert.
 - Vault Drift: DemandVault/ FeeVaultMeBTC Abweichung gegen erwartete Fees.
-- Oracle Stale: TWAP isReady false ueber X Minuten.
+- Oracle Stale: Fee-Preis stale ueber X Minuten (Fallback sichtbar).
 - Emission Drift: Summe minted vs. expected schedule (toleranz 0).
 - Gas Regression: claim/upgrade > +20% gegen Snapshot.
 - UI Errors: RPC Failures/Timeouts pro Stunde.
@@ -342,7 +342,7 @@ P0:
 - Preview vs Claim Konsistenz.
 
 P1:
-- Oracle/TWAP Tests auf Mainnet-Fork (ready/stale/price=0).
+- Oracle/TWAP Tests auf Mainnet-Fork (fresh/stale/price=0, Fallback).
 - Security Scenarios: Reentrancy/Approval/MEV/DoS.
 - Miner transfer/ownership edge cases.
 
@@ -358,7 +358,7 @@ P3:
 - [x] Gas-Report erstellt
 - [x] Snapshot erstellt
 - [x] Coverage erstellt (script/ ausgeschlossen; Anchor-Warnungen vorhanden)
-- [x] Invariant Suite (MiningManager/Stake/MinerNFT Flow)
+- [ ] Invariant Suite (MiningManager/Stake/MinerNFT Flow) – Timeout, nachgelagert
 
 ## Status (Fork)
 - [ ] Fork Tests: blockiert (kein externer RPC erreichbar in dieser Umgebung)

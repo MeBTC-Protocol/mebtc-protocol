@@ -138,3 +138,54 @@ export const stakeVaultAbi = [
     ]
   }
 ] as const
+
+export const twapOracleAbi = [
+  {
+    type: 'function',
+    name: 'update',
+    stateMutability: 'nonpayable',
+    inputs: [],
+    outputs: []
+  },
+  {
+    type: 'function',
+    name: 'getPriceForFees',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      { name: 'price', type: 'uint256' },
+      { name: 'isFresh', type: 'bool' }
+    ]
+  },
+  {
+    type: 'function',
+    name: 'lastTimestamp',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint32' }]
+  },
+  {
+    type: 'function',
+    name: 'window',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint32' }]
+  },
+  {
+    type: 'function',
+    name: 'lastGoodTimestamp',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint32' }]
+  }
+] as const
+
+export const liquidityEngineAbi = [
+  {
+    type: 'function',
+    name: 'executeEpoch',
+    stateMutability: 'nonpayable',
+    inputs: [],
+    outputs: []
+  }
+] as const

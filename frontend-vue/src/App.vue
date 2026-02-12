@@ -4,9 +4,9 @@ import { formatUnits, parseUnits } from 'ethers'
 import Header from './components/layout/Header.vue'
 import ThemeToggle from './components/common/ThemeToggle.vue'
 import ApprovalPrompt from './components/common/ApprovalPrompt.vue'
-import WalletCard from './components/wallet/WalletCard.vue'
 import BalancesCard from './components/wallet/BalancesCard.vue'
 import AllowancesDropdown from './components/wallet/AllowancesDropdown.vue'
+import OracleActionsDropdown from './components/wallet/OracleActionsDropdown.vue'
 import MinerScannerCard from './components/miner/MinerScannerCard.vue'
 import ClaimCard from './components/miner/ClaimCard.vue'
 import MinerPricingCard from './components/miner/MinerPricingCard.vue'
@@ -43,14 +43,20 @@ import { useRemoveLiquidity } from './composables/useRemoveLiquidity'
 import { useLpPosition } from './composables/useLpPosition'
 import { useMebtcPrice } from './composables/useMebtcPrice'
 import { useSwap } from './composables/useSwap'
+import { useOracleActions } from './composables/useOracleActions'
 
 // wallet
-const { isConnected, address, chainId, onChain } = useWallet()
+const { isConnected, onChain } = useWallet()
 useWalletAutoRefresh()
 
 // balances
 const { mebtc, payToken, loading: balancesLoading, mebtcDecimals, payTokenDecimals, payTokenSymbol } = useBalances()
-const { priceUsdc: mebtcPriceUsdc, priceText: mebtcPriceText, sourceText: mebtcPriceSource } = useMebtcPrice()
+const {
+  priceUsdc: mebtcPriceUsdc,
+  priceText: mebtcPriceText,
+  sourceText: mebtcPriceSource,
+  feePriceFresh
+} = useMebtcPrice()
 const {
   totalMined,
   totalStaked,
@@ -97,6 +103,13 @@ const {
   requestUpgradePowerBatch,
   requestUpgradeHashBatch
 } = useMinerActions()
+
+const {
+  busy: oracleBusy,
+  error: oracleError,
+  lastTx: oracleLastTx,
+  executeEpoch
+} = useOracleActions()
 
 // miners
 const { owned, busy: scanBusy, msg: scanMsg, error: scanError, rescan } = useOwnedMinerTokenIds()
@@ -652,6 +665,7 @@ const headerMeta = computed(() => {
   return [
     { label: 'MinerNFT', value: ADDRESSES.minerNft },
     { label: 'Manager', value: ADDRESSES.miningManager },
+    { label: 'Pair (USDC/MeBTC)', value: ADDRESSES.pair },
     { label: 'MeBTC price', value: priceValue }
   ]
 })
@@ -704,7 +718,6 @@ const headerMeta = computed(() => {
                   />
                 </div>
                 <div class="ui-stack">
-                  <WalletCard :connected="isConnected" :address="address" :chainId="chainId" :onChain="onChain" />
                   <AllowancesDropdown
                     :disabled="!isConnected || !onChain"
                     :loading="allowancesLoading"
@@ -722,6 +735,14 @@ const headerMeta = computed(() => {
                     :mebtcStakeAllowanceText="mebtcAllowanceText()"
                     :mebtcManagerAllowanceText="mebtcManagerAllowanceText()"
                     :mebtcUpgradeAllowanceText="mebtcUpgradeAllowanceText()"
+                  />
+                  <OracleActionsDropdown
+                    :disabled="!isConnected || !onChain"
+                    :busy="oracleBusy"
+                    :error="oracleError"
+                    :lastTx="oracleLastTx"
+                    :feePriceFresh="feePriceFresh"
+                    :onExecuteEpoch="executeEpoch"
                   />
                 </div>
               </div>

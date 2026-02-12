@@ -7,11 +7,15 @@ import { AVALANCHE, FUJI, TARGET_CHAIN } from '../contracts/chain'
 export function initAppKit() {
   const projectId = ENV.REOWN_PROJECT_ID
 
+  const iconBase =
+    typeof window !== 'undefined' && window.location?.origin ? window.location.origin : ENV.APP_URL
+  const iconUrl = new URL('/Vintage MeBTC cryptocurrency token.png', iconBase).toString()
+
   const metadata = {
     name: 'MeBTC Dashboard',
     description: 'MeBTC Dashboard',
     url: ENV.APP_URL,
-    icons: ['https://gateway.pinata.cloud/ipfs/bafybeicbbbq34icbttul7wjnybktvkgqp4fhlzi2iebx4amq4cdlwrnkti/MeBTC.png']
+    icons: [iconUrl]
   }
 
   const avalancheMainnet = defineChain({

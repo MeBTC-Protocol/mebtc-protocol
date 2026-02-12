@@ -62,6 +62,8 @@ contract MiningManager is ReentrancyGuard, Ownable {
     uint256 private constant KWH_DENOM = 3_600_000;     // 1000*3600
 
     uint16 public constant MAX_MEBTC_SHARE_BPS = 3000; // 30%
+    uint8 private constant FALLBACK_TWAP_STALE = 1;
+    uint8 private constant FALLBACK_MEBTC_INSUFFICIENT = 2;
 
     IERC20 public payToken;
     address public demandVault;
@@ -100,6 +102,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
     event Initialized(address mebtc, address miner, address stakeVault, address demandVault, address feeVaultMeBTC, address twapOracle);
     event PayTokenUpdated(address indexed oldToken, address indexed newToken);
     event MinerResynced(uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
+    event MebtcFeeFallback(address indexed payer, uint256 feeUSDC, uint8 reason);
 
     modifier onlyInit() {
         require(msg.sender == initializer, "!init");
@@ -380,33 +383,46 @@ contract MiningManager is ReentrancyGuard, Ownable {
     }
 
     function _collectFees(address payer, uint256 feeUSDC, uint16 mebtcShareBps) internal {
+        twapOracle.updateIfDue();
         if (mebtcShareBps == 0) {
-            require(payToken.allowance(payer, address(this)) >= feeUSDC, "allowance");
-            require(payToken.balanceOf(payer) >= feeUSDC, "balance");
-            require(payToken.transferFrom(payer, demandVault, feeUSDC), "paytoken");
+            _collectUsdc(payer, feeUSDC);
             return;
         }
 
-        require(twapOracle.isReady(), "twap");
-        uint256 price = twapOracle.priceMebtcInUsdc();
-        require(price > 0, "price");
+        (uint256 price, bool fresh) = twapOracle.getPriceForFees();
+        if (!fresh || price == 0) {
+            emit MebtcFeeFallback(payer, feeUSDC, FALLBACK_TWAP_STALE);
+            _collectUsdc(payer, feeUSDC);
+            return;
+        }
 
         uint256 mebtcUsdc = (feeUSDC * mebtcShareBps) / 10_000;
         uint256 usdcPart = feeUSDC - mebtcUsdc;
 
-        if (usdcPart > 0) {
-            require(payToken.allowance(payer, address(this)) >= usdcPart, "allowance");
-            require(payToken.balanceOf(payer) >= usdcPart, "balance");
-            require(payToken.transferFrom(payer, demandVault, usdcPart), "paytoken");
-        }
-
         uint256 mebtcAmount = (mebtcUsdc * MEBTC_UNIT) / price;
         if (mebtcAmount > 0) {
             IERC20 mebtcErc20 = IERC20(address(meBTC));
-            require(mebtcErc20.allowance(payer, address(this)) >= mebtcAmount, "mebtc allowance");
-            require(mebtcErc20.balanceOf(payer) >= mebtcAmount, "mebtc balance");
+            if (mebtcErc20.allowance(payer, address(this)) < mebtcAmount || mebtcErc20.balanceOf(payer) < mebtcAmount) {
+                emit MebtcFeeFallback(payer, feeUSDC, FALLBACK_MEBTC_INSUFFICIENT);
+                _collectUsdc(payer, feeUSDC);
+                return;
+            }
+        }
+
+        if (usdcPart > 0) {
+            _collectUsdc(payer, usdcPart);
+        }
+
+        if (mebtcAmount > 0) {
+            IERC20 mebtcErc20 = IERC20(address(meBTC));
             require(mebtcErc20.transferFrom(payer, feeVaultMeBTC, mebtcAmount), "mebtc");
         }
+    }
+
+    function _collectUsdc(address payer, uint256 amount) internal {
+        require(payToken.allowance(payer, address(this)) >= amount, "allowance");
+        require(payToken.balanceOf(payer) >= amount, "balance");
+        require(payToken.transferFrom(payer, demandVault, amount), "paytoken");
     }
 
     function preview(uint256 id, address owner) external view returns (uint256 r, uint256 f) {

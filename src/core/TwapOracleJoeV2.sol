@@ -20,12 +20,17 @@ contract TwapOracleJoeV2 is ITwapOracle {
     IJoePairLike public immutable pair;
     uint256 public immutable minUsdcLiquidity;
     uint32 public immutable window;
+    uint32 public immutable updateInterval;
+    uint32 public immutable maxPriceAge;
 
     uint256 public price0CumulativeLast;
     uint256 public price1CumulativeLast;
     uint32 public lastTimestamp;
+    uint256 public lastGoodPrice;
+    uint32 public lastGoodTimestamp;
 
     event OracleUpdated(uint256 price0Cumulative, uint256 price1Cumulative, uint32 timestamp);
+    event PriceCached(uint256 priceUsdc, uint32 timestamp);
 
     constructor(
         address _mebtc,
@@ -37,11 +42,14 @@ contract TwapOracleJoeV2 is ITwapOracle {
         require(_mebtc != address(0) && _usdc != address(0), "token=0");
         require(_pair != address(0), "pair=0");
         require(_window > 0, "window=0");
+        require(_window <= type(uint32).max / 2, "window");
         mebtc = _mebtc;
         usdc = _usdc;
         pair = IJoePairLike(_pair);
         minUsdcLiquidity = _minUsdcLiquidity;
         window = _window;
+        updateInterval = _window * 2;
+        maxPriceAge = _window * 2;
 
         price0CumulativeLast = pair.price0CumulativeLast();
         price1CumulativeLast = pair.price1CumulativeLast();
@@ -50,11 +58,7 @@ contract TwapOracleJoeV2 is ITwapOracle {
     }
 
     function update() external {
-        (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) = _currentCumulativePrices();
-        price0CumulativeLast = price0Cumulative;
-        price1CumulativeLast = price1Cumulative;
-        lastTimestamp = blockTimestamp;
-        emit OracleUpdated(price0Cumulative, price1Cumulative, blockTimestamp);
+        updateIfDue();
     }
 
     function isReady() external view returns (bool) {
@@ -85,6 +89,46 @@ contract TwapOracleJoeV2 is ITwapOracle {
         uint256 priceUsdc = (priceAverage * 10 ** MEBTC_DECIMALS) / Q112;
         require(priceUsdc > 0, "price");
         return priceUsdc;
+    }
+
+    function updateIfDue() public returns (bool updated) {
+        (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) = _currentCumulativePrices();
+        if (blockTimestamp <= lastTimestamp) return false;
+
+        uint32 elapsed = blockTimestamp - lastTimestamp;
+        if (elapsed < updateInterval) return false;
+
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+        if (_usdcReserve(reserve0, reserve1) < minUsdcLiquidity) return false;
+
+        uint256 priceAverage;
+        if (pair.token0() == mebtc) {
+            priceAverage = (price0Cumulative - price0CumulativeLast) / elapsed;
+        } else {
+            priceAverage = (price1Cumulative - price1CumulativeLast) / elapsed;
+        }
+
+        uint256 priceUsdc = (priceAverage * 10 ** MEBTC_DECIMALS) / Q112;
+        if (priceUsdc > 0) {
+            lastGoodPrice = priceUsdc;
+            lastGoodTimestamp = blockTimestamp;
+            emit PriceCached(priceUsdc, blockTimestamp);
+        }
+
+        price0CumulativeLast = price0Cumulative;
+        price1CumulativeLast = price1Cumulative;
+        lastTimestamp = blockTimestamp;
+        emit OracleUpdated(price0Cumulative, price1Cumulative, blockTimestamp);
+        return true;
+    }
+
+    function getPriceForFees() external view returns (uint256 price, bool isFresh) {
+        price = lastGoodPrice;
+        uint32 ts = lastGoodTimestamp;
+        if (price == 0 || ts == 0) return (price, false);
+        if (block.timestamp < ts) return (price, false);
+        uint32 age = uint32(block.timestamp) - ts;
+        isFresh = age <= maxPriceAge;
     }
 
     function _currentCumulativePrices()

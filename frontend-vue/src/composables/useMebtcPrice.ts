@@ -1,13 +1,9 @@
 import { ref, computed, watchEffect } from 'vue'
 import { Contract, formatUnits } from 'ethers'
 import { ADDRESSES, TOKENS } from '../contracts/addresses'
+import { twapOracleAbi } from '../contracts/abi'
 import { useWallet } from './useWallet'
 import { useGlobalRefresh } from './useGlobalRefresh'
-
-const TWAP_ABI = [
-  'function isReady() view returns (bool)',
-  'function priceMebtcInUsdc() view returns (uint256)'
-]
 
 const PAIR_ABI = [
   'function token0() view returns (address)',
@@ -24,6 +20,7 @@ export function useMebtcPrice() {
   const priceUsdc = ref<bigint | null>(null)
   const source = ref<Source>('none')
   const error = ref('')
+  const feePriceFresh = ref(false)
 
   watchEffect(async () => {
     refreshKey.value
@@ -32,17 +29,18 @@ export function useMebtcPrice() {
 
     try {
       const p = readProvider.value
-      const twap = new Contract(ADDRESSES.twapOracle, TWAP_ABI, p) as any
+      const twap = new Contract(ADDRESSES.twapOracle, twapOracleAbi, p) as any
 
       try {
-        const ready = await twap.isReady()
-        if (ready) {
-          const v = await twap.priceMebtcInUsdc()
+        const [v, fresh] = await twap.getPriceForFees()
+        feePriceFresh.value = Boolean(fresh)
+        if (fresh && v && v > 0n) {
           priceUsdc.value = v as bigint
           source.value = 'twap'
           return
         }
       } catch {
+        feePriceFresh.value = false
         // fallback to pool spot price
       }
 
@@ -68,6 +66,7 @@ export function useMebtcPrice() {
       error.value = e?.shortMessage ?? e?.message ?? String(e)
       priceUsdc.value = null
       source.value = 'none'
+      feePriceFresh.value = false
     } finally {
       loading.value = false
     }
@@ -84,5 +83,5 @@ export function useMebtcPrice() {
     return '-'
   })
 
-  return { priceUsdc, priceText, source, sourceText, loading, error }
+  return { priceUsdc, priceText, source, sourceText, feePriceFresh, loading, error }
 }

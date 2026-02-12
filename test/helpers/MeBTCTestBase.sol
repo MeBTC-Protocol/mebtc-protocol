@@ -28,6 +28,9 @@ contract MockPayToken is ERC20 {
 contract MockTwapOracle {
     bool internal ready;
     uint256 internal price;
+    uint256 internal lastGoodPrice_;
+    uint32 internal lastGoodTimestamp_;
+    uint32 internal maxAge = 7200;
 
     constructor(bool _ready, uint256 _price) {
         ready = _ready;
@@ -48,6 +51,34 @@ contract MockTwapOracle {
 
     function priceMebtcInUsdc() external view returns (uint256) {
         return price;
+    }
+
+    function updateIfDue() external returns (bool) {
+        if (!ready) return false;
+        if (price == 0) return false;
+        lastGoodPrice_ = price;
+        lastGoodTimestamp_ = uint32(block.timestamp);
+        return true;
+    }
+
+    function getPriceForFees() external view returns (uint256 p, bool isFresh) {
+        p = lastGoodPrice_;
+        if (p == 0 || lastGoodTimestamp_ == 0) return (p, false);
+        if (block.timestamp < lastGoodTimestamp_) return (p, false);
+        uint32 age = uint32(block.timestamp) - lastGoodTimestamp_;
+        isFresh = age <= maxAge;
+    }
+
+    function lastGoodPrice() external view returns (uint256) {
+        return lastGoodPrice_;
+    }
+
+    function lastGoodTimestamp() external view returns (uint32) {
+        return lastGoodTimestamp_;
+    }
+
+    function maxPriceAge() external view returns (uint32) {
+        return maxAge;
     }
 }
 

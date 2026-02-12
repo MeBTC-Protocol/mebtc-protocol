@@ -1,109 +1,118 @@
-## MeBTC Contracts (Foundry)
+## MeBTC (Contracts + Frontend)
 
-Minimal docs for the MeBTC contracts and scripts.
+Diese README fasst die aktuelle Projektstruktur, die Kern-Logik und die Test-Abläufe zusammen.
 
-Foundry consists of:
+## Projekt-Map
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- `src/` Smart Contracts
+- `test/` Foundry Tests (Unit/Integration/Invariant)
+- `script/` Deploy- und Admin-Skripte
+- `frontend-vue/` Vue UI
+- `TEST_PLAN.md` Gesamt-Testplan
+- `TEST_ABLAUF_FUJI.md` Fuji E2E Checkliste (inkl. aktueller Deploy-Daten)
+- `DEPLOY_ADDRESSES_FUJI.md` Address-Historie und aktuelle Fuji-Deploys
+- `SECURITY_CHANGES.md` Change-Log + Findings
 
-## Documentation
+## Kern-Contracts (Kurz)
 
-https://book.getfoundry.sh/
+- `MiningManager`: Claims, Fees, Emission, Halving, TWAP-Checks
+- `MinerNFT`: Miner-Kauf + Upgrade-Requests (Pending bis Claim)
+- `MeBTC`: Reward Token mit Supply-Cap
+- `StakeVault`: Staking + Lock
+- `TokenVault`: Vault-Wrapper (Demand/Fee)
+- `LiquidityEngine`: Epoch-basierte Liquidity & Auto-Compound
+- `TwapOracleJoeV2`: TWAP-Oracle (Time-Weighted Average Price)
 
-## Usage
+## Flows (High-Level)
 
-### Build
+1) **Buy Miner** (USDC) -> Miner aktiv, Rewards ab naechstem Slot.
+2) **Claim** -> mintet MeBTC; Fees gehen an DemandVault (USDC) und optional FeeVaultMeBTC.
+3) **Upgrade** -> Kosten in USDC (oder Anteil in MeBTC), aktiv nach Claim.
+4) **Stake** -> Lock + Boni.
+5) **TWAP + Epoch** -> TWAP wird bei Claim/Upgrade (max. alle 2h) aktualisiert; Engine zieht Vaults in den Pool.
 
-```shell
-$ forge build
-```
+## TWAP vs. Spot-Preis
 
-### Test
+- **Spot-Preis**: Momentaufnahme aus Pool-Reserven, reagiert sofort auf Swaps.
+- **TWAP**: Durchschnitt ueber ein Zeitfenster; robuster gegen Manipulation.
 
-```shell
-$ forge test
-```
+**Wichtig:** MeBTC-Fees verwenden einen gecachten TWAP-Preis. Wenn der Preis zu alt
+ist, faellt die Gebuehr automatisch auf **USDC-only** zurueck (kein Revert).
 
-### Format
+## Wie kommt MeBTC in den FeeVault?
 
-```shell
-$ forge fmt
-```
+- Bei `claimWithMebtc` oder `requestUpgrade*WithMebtc` wird der MeBTC-Anteil
+  direkt von der Wallet in den **FeeVaultMeBTC** transferiert.
+- Ohne MeBTC im FeeVault kann `LiquidityEngine.executeEpoch()` keine Liquidity adden.
 
-### Gas Snapshots
+## LiquidityEngine: Wann werden Vaults in den Pool transferiert?
 
-```shell
-$ forge snapshot
-```
+`executeEpoch()` addet Liquidity **nur wenn**:
 
-### Anvil
+- `demandVault USDC >= MIN_USDC_LP` (Fuji aktuell: 10 USDC)
+- `feeVaultMeBTC > 0`
+- Epoch-Fenster abgelaufen ist
 
-```shell
-$ anvil
-```
+Die Engine transferiert immer die kleinere Seite, damit das Verhaeltnis passt.
 
-### Deploy
-
-```shell
-$ forge script script/DeployMainnet.s.sol:DeployMainnet --rpc-url <your_rpc_url> --broadcast
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
-
-## Frontend (local)
-
-The Vue frontend lives in `frontend-vue/`.
+## Frontend (Vue)
 
 ### Setup
 
-```shell
-$ cd frontend-vue
-$ npm install
+```bash
+cd frontend-vue
+npm install
 ```
 
-### Run dev server
+### Dev-Server
 
-```shell
-$ npm run dev
+```bash
+npm run dev
 ```
 
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:5173`.
 
-### Environment
+### UI Features (aktuell)
 
-The frontend reads env vars from `frontend-vue/.env`:
+- **Header:** zeigt MinerNFT, Manager, Pair-Adresse und MeBTC-Preis (mit Quelle).
+- **Approvals Dropdown**
+- **Oracle/Engine Dropdown** (neben Approvals):
+  - Execute Epoch
+  - Anzeige: `Fee-Preis fresh: ja/nein`
 
-- `VITE_REOWN_PROJECT_ID` (wallet appkit)
-- `VITE_APP_URL` (local app URL)
-- `VITE_FUJI_RPC_URL` (defaults to `/fuji` for the Vite proxy)
+## Tests
 
-The dev server proxies `/fuji` to the Fuji RPC. See `frontend-vue/vite.config.ts` if you need to adjust the target or path.
+### Lokal (Foundry)
 
-### Build / preview
-
-```shell
-$ npm run build
-$ npm run preview
+```bash
+forge test
 ```
+
+### Spezifische Suites
+
+```bash
+forge test --match-contract MiningManagerHalvingTest
+forge test --match-contract LiquidityEngineTest
+forge test --match-contract SecurityScenariosTest
+```
+
+### Invariant Suite
+
+- Siehe `test/InvariantMiningManager.t.sol`
+- Status/Probleme werden in `SECURITY_CHANGES.md` dokumentiert.
+
+### Fuji E2E
+
+- Checkliste und Status in `TEST_ABLAUF_FUJI.md`
+- Aktuelle Deploy-Daten in `DEPLOY_ADDRESSES_FUJI.md`
 
 ## Scripts
 
 ### Deploy (Mainnet)
+
+```bash
+forge script script/DeployMainnet.s.sol:DeployMainnet --rpc-url <your_rpc_url> --broadcast
+```
 
 Env:
 ```
@@ -122,11 +131,11 @@ ROYALTY_WALLET
 ROYALTY_BPS
 ```
 
-See `DEPLOY_FUJI.md` and `DEPLOY_ADDRESSES_FUJI.md` for Fuji steps and address history.
-
 ### SetPayToken
 
-Switches the payment token on both contracts (owner only).
+```bash
+forge script script/SetPayToken.s.sol:SetPayToken --rpc-url <rpc> --broadcast
+```
 
 Env:
 ```
@@ -136,14 +145,11 @@ MINER_ADDRESS
 PAY_TOKEN_ADDRESS
 ```
 
-Run:
-```
-forge script script/SetPayToken.s.sol:SetPayToken --rpc-url <rpc> --broadcast
-```
-
 ### ResyncMiner
 
-Permissionless resync helper for a single miner.
+```bash
+forge script script/ResyncMiner.s.sol:ResyncMiner --rpc-url <rpc> --broadcast
+```
 
 Env:
 ```
@@ -152,7 +158,8 @@ MANAGER_ADDRESS
 TOKEN_ID
 ```
 
-Run:
-```
-forge script script/ResyncMiner.s.sol:ResyncMiner --rpc-url <rpc> --broadcast
-```
+## Weitere Doku
+
+- `TEST_PLAN.md` (Teststrategie und Prioritaeten)
+- `TEST_ABLAUF_FUJI.md` (Schritt-fuer-Schritt Fuji Tests)
+- `SECURITY_CHANGES.md` (Findings & geplante Aenderungen)

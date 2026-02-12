@@ -49,6 +49,8 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     uint16 public constant PRIMARY_POOL_BPS = 9000; // 90%
     uint16 public constant PRIMARY_PROJECT_BPS = 1000; // 10%
     uint16 public constant MAX_MEBTC_SHARE_BPS = 3000; // 30%
+    uint8 private constant FALLBACK_TWAP_STALE = 1;
+    uint8 private constant FALLBACK_MEBTC_INSUFFICIENT = 2;
 
     // --------- config ----------
     IERC20 public payToken;
@@ -111,6 +113,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     event UpgradeRequestedPower(uint256 indexed tokenId, uint16 newPendingPowerBps, uint256 costUSDC);
     event UpgradeRequestedHash(uint256 indexed tokenId, uint16 newPendingHashBps, uint256 costUSDC);
+    event MebtcFeeFallback(address indexed payer, uint256 feeUSDC, uint8 reason);
 
     // --------- constructor ----------
     constructor(
@@ -488,24 +491,36 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     function _collectUpgradeFee(uint256 costUSDC, uint16 mebtcShareBps) internal {
         require(mebtcShareBps <= MAX_MEBTC_SHARE_BPS, "mebtc%");
+        twapOracle.updateIfDue();
 
         if (mebtcShareBps == 0) {
             payToken.safeTransferFrom(msg.sender, demandVault, costUSDC);
             return;
         }
 
-        require(twapOracle.isReady(), "twap");
-        uint256 price = twapOracle.priceMebtcInUsdc();
-        require(price > 0, "price");
+        (uint256 price, bool fresh) = twapOracle.getPriceForFees();
+        if (!fresh || price == 0) {
+            emit MebtcFeeFallback(msg.sender, costUSDC, FALLBACK_TWAP_STALE);
+            payToken.safeTransferFrom(msg.sender, demandVault, costUSDC);
+            return;
+        }
 
         uint256 mebtcUsdc = (costUSDC * mebtcShareBps) / 10_000;
         uint256 usdcPart = costUSDC - mebtcUsdc;
+
+        uint256 mebtcAmount = (mebtcUsdc * MEBTC_UNIT) / price;
+        if (mebtcAmount > 0) {
+            if (mebtcToken.allowance(msg.sender, address(this)) < mebtcAmount || mebtcToken.balanceOf(msg.sender) < mebtcAmount) {
+                emit MebtcFeeFallback(msg.sender, costUSDC, FALLBACK_MEBTC_INSUFFICIENT);
+                payToken.safeTransferFrom(msg.sender, demandVault, costUSDC);
+                return;
+            }
+        }
 
         if (usdcPart > 0) {
             payToken.safeTransferFrom(msg.sender, demandVault, usdcPart);
         }
 
-        uint256 mebtcAmount = (mebtcUsdc * MEBTC_UNIT) / price;
         if (mebtcAmount > 0) {
             mebtcToken.safeTransferFrom(msg.sender, feeVaultMeBTC, mebtcAmount);
         }
