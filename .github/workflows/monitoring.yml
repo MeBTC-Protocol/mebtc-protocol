@@ -1,0 +1,67 @@
+name: On-Chain Monitoring
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  monitor_onchain:
+    name: Runtime Metrics (On-Chain)
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MAINNET_RPC_URL != '' && secrets.MANAGER_ADDRESS != '' && secrets.MINER_ADDRESS != '' && secrets.MEBTC_ADDRESS != '' && secrets.TWAP_ORACLE_ADDRESS != '' && secrets.DEMAND_VAULT_ADDRESS != '' && secrets.FEE_VAULT_MEBTC_ADDRESS != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Run on-chain monitoring checks
+        env:
+          RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          MANAGER_ADDRESS: ${{ secrets.MANAGER_ADDRESS }}
+          MINER_ADDRESS: ${{ secrets.MINER_ADDRESS }}
+          MEBTC_ADDRESS: ${{ secrets.MEBTC_ADDRESS }}
+          TWAP_ORACLE_ADDRESS: ${{ secrets.TWAP_ORACLE_ADDRESS }}
+          DEMAND_VAULT_ADDRESS: ${{ secrets.DEMAND_VAULT_ADDRESS }}
+          FEE_VAULT_MEBTC_ADDRESS: ${{ secrets.FEE_VAULT_MEBTC_ADDRESS }}
+          PAY_TOKEN_ADDRESS: ${{ secrets.PAY_TOKEN_ADDRESS }}
+          WINDOW_BLOCKS: 7200
+          ORACLE_STALE_MAX_SECONDS: 1200
+          FALLBACK_RATE_MAX_BPS: 2000
+          FAIL_ON_ALERTS: 1
+        run: |
+          bash ops/monitoring/check_onchain_metrics.sh
+
+  monitor_telemetry:
+    name: Runtime Metrics (Telemetry)
+    runs-on: ubuntu-latest
+    if: ${{ secrets.TELEMETRY_EVENTS_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch telemetry events
+        env:
+          TELEMETRY_EVENTS_URL: ${{ secrets.TELEMETRY_EVENTS_URL }}
+          TELEMETRY_AUTH_BEARER: ${{ secrets.TELEMETRY_AUTH_BEARER }}
+        run: |
+          auth_args=()
+          if [ -n "${TELEMETRY_AUTH_BEARER:-}" ]; then
+            auth_args=(-H "Authorization: Bearer $TELEMETRY_AUTH_BEARER")
+          fi
+          curl -fsSL "${auth_args[@]}" "$TELEMETRY_EVENTS_URL" -o /tmp/mebtc-telemetry.jsonl
+
+      - name: Run telemetry monitoring checks
+        env:
+          TELEMETRY_EVENTS_FILE: /tmp/mebtc-telemetry.jsonl
+          WINDOW_MINUTES: 60
+          CLAIM_REVERT_RATE_MAX_BPS: 500
+          CLAIM_RPC_ERROR_RATE_MAX_BPS: 1000
+          UI_RPC_ERRORS_MAX_PER_HOUR: 120
+          MIN_CLAIM_ATTEMPTS_FOR_ALERT: 20
+          FAIL_ON_ALERTS: 1
+        run: |
+          bash ops/monitoring/check_telemetry_metrics.sh

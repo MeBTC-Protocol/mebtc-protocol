@@ -10,7 +10,6 @@ import OracleActionsDropdown from './components/wallet/OracleActionsDropdown.vue
 import MinerScannerCard from './components/miner/MinerScannerCard.vue'
 import ClaimCard from './components/miner/ClaimCard.vue'
 import MinerPricingCard from './components/miner/MinerPricingCard.vue'
-import NewsCard from './components/news/NewsCard.vue'
 import MiningStatsDropdown from './components/miner/MiningStatsDropdown.vue'
 import StakingCard from './components/staking/StakingCard.vue'
 import LiquidityCard from './components/liquidity/LiquidityCard.vue'
@@ -44,6 +43,7 @@ import { useLpPosition } from './composables/useLpPosition'
 import { useMebtcPrice } from './composables/useMebtcPrice'
 import { useSwap } from './composables/useSwap'
 import { useOracleActions } from './composables/useOracleActions'
+import { useUiRpcMonitoring } from './composables/useUiRpcMonitoring'
 
 // wallet
 const { isConnected, onChain } = useWallet()
@@ -53,8 +53,8 @@ useWalletAutoRefresh()
 const { mebtc, payToken, loading: balancesLoading, mebtcDecimals, payTokenDecimals, payTokenSymbol } = useBalances()
 const {
   priceUsdc: mebtcPriceUsdc,
-  priceText: mebtcPriceText,
-  sourceText: mebtcPriceSource,
+  twapPriceText,
+  poolPriceText,
   feePriceFresh
 } = useMebtcPrice()
 const {
@@ -97,6 +97,10 @@ const {
   busy: actionBusy,
   error: actionError,
   lastTx: actionLastTx,
+  maxBuyQtyPerTx,
+  buyQueueStatus,
+  maxBatchIdsPerTx,
+  queueStatus: actionQueueStatus,
   buyFromModel,
   requestUpgradePower,
   requestUpgradeHash,
@@ -125,6 +129,8 @@ const {
   lastTx: claimLastTx,
   lastApproveTx,
   totalFeeSelected,
+  maxIdsPerTx: claimMaxIdsPerTx,
+  claimQueueStatus,
   claim
 } = useClaimSelected({
   owned: () => owned.value,
@@ -251,6 +257,20 @@ const approvalPrompt = ref<ApprovalPromptState | null>(null)
 const approvalPromptBusy = ref(false)
 const approvalPromptError = ref('')
 
+useUiRpcMonitoring([
+  { context: 'mining-stats', error: miningStatsError },
+  { context: 'miner-action', error: actionError },
+  { context: 'oracle-action', error: oracleError },
+  { context: 'miner-scan', error: scanError },
+  { context: 'claim', error: claimError },
+  { context: 'stake', error: stakeError },
+  { context: 'router-approve', error: approveRouterError },
+  { context: 'add-liquidity', error: addLiquidityError },
+  { context: 'remove-liquidity', error: removeLiquidityError },
+  { context: 'swap', error: swapError },
+  { context: 'approval-prompt', error: approvalPromptError }
+])
+
 function formatAmount(amount: bigint, decimals: number) {
   return formatUnits(amount, decimals)
 }
@@ -324,18 +344,6 @@ const approveManagerExactMissing = computed(() => {
     ? totalFeeSelected.value - allowanceManager.value
     : 0n
 })
-
-const newsItems = ref([
-  {
-    title: 'Dashboard update',
-    summary: 'News sidebar added for quick updates.',
-    date: '2024-05-12'
-  },
-  {
-    title: 'Fuji maintenance',
-    summary: 'Possible delays in transactions during scheduled downtime.'
-  }
-])
 
 function setSelected(next: Record<string, boolean>) {
   selected.value = next
@@ -659,219 +667,232 @@ async function swapWithApproval(params: { direction: 'buy' | 'sell'; amountIn: s
 }
 
 const headerMeta = computed(() => {
-  const priceValue = mebtcPriceText.value === '-'
-    ? '-'
-    : `${mebtcPriceText.value} USDC (${mebtcPriceSource.value})`
+  const twapText = twapPriceText.value === '-' ? '-' : `${twapPriceText.value} USDC`
+  const poolText = poolPriceText.value === '-' ? '-' : `${poolPriceText.value} USDC`
+  const feeFreshText = feePriceFresh.value ? 'ja' : 'nein'
+  const priceValue = `Pool: ${poolText} | TWAP: ${twapText} | Fee fresh: ${feeFreshText}`
+  const priceInfo = [
+    'Pool Price: aktueller Spotpreis aus den Pair-Reserven (USDC/MeBTC). Reagiert sofort auf Trades.',
+    'TWAP: zeitgewichteter Durchschnittspreis aus dem Oracle-Fenster. Stabiler, weniger sprunghaft.',
+    'TWAP-Update: passiert bei Claim/Upgrade (max. alle 2h).',
+    'Fee-Berechnung: Wenn Fee fresh = ja, wird TWAP fuer Gebühren genutzt; sonst Fallback auf Pool Price.'
+  ].join('\n')
   return [
+    { label: 'MeBTC', value: ADDRESSES.mebtc },
     { label: 'MinerNFT', value: ADDRESSES.minerNft },
     { label: 'Manager', value: ADDRESSES.miningManager },
     { label: 'Pair (USDC/MeBTC)', value: ADDRESSES.pair },
-    { label: 'MeBTC price', value: priceValue }
+    { label: 'MeBTC price', value: priceValue, info: priceInfo }
   ]
 })
 </script>
 
 <template>
   <div class="app-root">
-    <div class="app-shell">
-      <aside class="app-aside">
-        <div class="app-aside-inner">
-          <NewsCard :items="newsItems" />
-        </div>
-      </aside>
-
-      <main class="app-main">
-        <Header
-          title="MeBTC Dashboard"
-          :meta="headerMeta"
-          :iconUrl="ME_BTC_ICON_URL"
-        >
-          <template #right>
-            <div class="ui-stack">
-              <ThemeToggle />
-              <div class="control-stack">
-                <div class="ui-stack" style="min-width:220px;">
-                  <MinerScannerCard
-                    :disabled="!isConnected || !onChain"
-                    :busy="scanBusy"
-                    :msg="scanMsg"
-                    :error="scanError"
-                    :owned="owned"
-                    :onScan="rescan"
-                    compact
-                  />
-                  <MiningStatsDropdown
-                    :totalMined="totalMined"
-                    :totalStaked="totalStaked"
-                    :feeVaultMebtc="feeVaultMebtc"
-                    :demandVaultUsdc="demandVaultUsdc"
-                    :poolMebtc="poolMebtc"
-                    :poolUsdc="poolUsdc"
-                    :totalEffectiveHash="totalEffectiveHash"
-                    :soldMiners="soldMiners"
-                    :mebtcDecimals="mebtcDecimals"
-                    :firstMinerCreatedAt="firstMinerCreatedAt"
-                    :blockTime="intervalsSinceFirst"
-                    :nextSlotInSeconds="nextSlotInSeconds"
-                    :loading="miningStatsLoading"
-                    :error="miningStatsError"
-                  />
-                </div>
-                <div class="ui-stack">
-                  <AllowancesDropdown
-                    :disabled="!isConnected || !onChain"
-                    :loading="allowancesLoading"
-                    :minerText="allowanceMinerText()"
-                    :managerText="allowanceManagerText()"
-                    :payTokenSymbol="payTokenSymbol"
-                    :payTokenDecimals="payTokenDecimals"
-                    :approveExactMissing="approveExactMissing"
-                    :approveManagerExactMissing="approveManagerExactMissing"
-                    :routerLoading="routerAllowancesLoading"
-                    :routerUsdcAllowanceText="usdcAllowanceText()"
-                    :routerMebtcAllowanceText="routerMebtcAllowanceText()"
-                    :routerLpAllowanceText="lpAllowanceText()"
-                    :mebtcLoading="mebtcAllowancesLoading"
-                    :mebtcStakeAllowanceText="mebtcAllowanceText()"
-                    :mebtcManagerAllowanceText="mebtcManagerAllowanceText()"
-                    :mebtcUpgradeAllowanceText="mebtcUpgradeAllowanceText()"
-                  />
-                  <OracleActionsDropdown
-                    :disabled="!isConnected || !onChain"
-                    :busy="oracleBusy"
-                    :error="oracleError"
-                    :lastTx="oracleLastTx"
-                    :feePriceFresh="feePriceFresh"
-                    :onExecuteEpoch="executeEpoch"
-                  />
-                </div>
+    <main class="app-main">
+      <Header
+        title="MeBTC Dashboard"
+        :meta="headerMeta"
+        :iconUrl="ME_BTC_ICON_URL"
+      >
+        <template #right>
+          <div class="ui-stack">
+            <ThemeToggle />
+            <div class="control-stack control-stack-grid">
+              <div class="control-cell">
+                <div class="ui-subtitle">Status</div>
+                <MiningStatsDropdown
+                  :totalMined="totalMined"
+                  :totalStaked="totalStaked"
+                  :feeVaultMebtc="feeVaultMebtc"
+                  :demandVaultUsdc="demandVaultUsdc"
+                  :poolMebtc="poolMebtc"
+                  :poolUsdc="poolUsdc"
+                  :totalEffectiveHash="totalEffectiveHash"
+                  :soldMiners="soldMiners"
+                  :mebtcDecimals="mebtcDecimals"
+                  :firstMinerCreatedAt="firstMinerCreatedAt"
+                  :blockTime="intervalsSinceFirst"
+                  :nextSlotInSeconds="nextSlotInSeconds"
+                  :loading="miningStatsLoading"
+                  :error="miningStatsError"
+                />
+              </div>
+              <div class="control-cell">
+                <div class="ui-subtitle">Approvals</div>
+                <AllowancesDropdown
+                  :disabled="!isConnected || !onChain"
+                  :loading="allowancesLoading"
+                  :minerText="allowanceMinerText()"
+                  :managerText="allowanceManagerText()"
+                  :payTokenSymbol="payTokenSymbol"
+                  :payTokenDecimals="payTokenDecimals"
+                  :approveExactMissing="approveExactMissing"
+                  :approveManagerExactMissing="approveManagerExactMissing"
+                  :routerLoading="routerAllowancesLoading"
+                  :routerUsdcAllowanceText="usdcAllowanceText()"
+                  :routerMebtcAllowanceText="routerMebtcAllowanceText()"
+                  :routerLpAllowanceText="lpAllowanceText()"
+                  :mebtcLoading="mebtcAllowancesLoading"
+                  :mebtcStakeAllowanceText="mebtcAllowanceText()"
+                  :mebtcManagerAllowanceText="mebtcManagerAllowanceText()"
+                  :mebtcUpgradeAllowanceText="mebtcUpgradeAllowanceText()"
+                />
+              </div>
+              <div class="control-cell">
+                <div class="ui-subtitle">Tools</div>
+                <MinerScannerCard
+                  :disabled="!isConnected || !onChain"
+                  :busy="scanBusy"
+                  :msg="scanMsg"
+                  :error="scanError"
+                  :owned="owned"
+                  :onScan="rescan"
+                  compact
+                />
+              </div>
+              <div class="control-cell control-cell-critical">
+                <div class="ui-subtitle">Protocol</div>
+                <OracleActionsDropdown
+                  :disabled="!isConnected || !onChain"
+                  :busy="oracleBusy"
+                  :error="oracleError"
+                  :lastTx="oracleLastTx"
+                  :onExecuteEpoch="executeEpoch"
+                />
               </div>
             </div>
-          </template>
-        </Header>
+          </div>
+        </template>
+      </Header>
 
-        <div v-if="!isConnected" class="notice">
-          wallet nicht verbunden (oben rechts verbinden)
-        </div>
+      <div v-if="!isConnected" class="notice">
+        wallet nicht verbunden (oben rechts verbinden)
+      </div>
 
-        <div v-else-if="!onChain" class="notice">
-          falsches netzwerk. bitte avalanche fuji auswählen
-        </div>
+      <div v-else-if="!onChain" class="notice">
+        falsches netzwerk. bitte avalanche fuji auswählen
+      </div>
 
-        <div class="section-grid">
-          <BalancesCard
-            class="grid-span-2"
-            :mebtc="mebtc"
-            :payToken="payToken"
-            :loading="balancesLoading"
-            :mebtcDecimals="mebtcDecimals"
-            :payTokenDecimals="payTokenDecimals"
-            :payTokenSymbol="payTokenSymbol"
-            :disabled="!isConnected || !onChain"
-            :owned="owned"
-            :stakeTier="stakeTier"
-            :hashBonusBps="hashBonusBps"
-            :powerBonusBps="powerBonusBps"
-          />
-
-          <MinerPricingCard
-            :disabled="!isConnected || !onChain"
-            :allowanceMiner="allowanceMiner"
-            :actionBusy="actionBusy"
-            :actionError="actionError"
-            :actionLastTx="actionLastTx"
-            :onBuyModel="buyFromModelWithApproval"
-            :onUpgradePower="upgradePowerWithApproval"
-            :onUpgradeHash="upgradeHashWithApproval"
-            :onUpgradePowerBatch="upgradePowerBatchWithApproval"
-            :onUpgradeHashBatch="upgradeHashBatchWithApproval"
-            :mebtcUpgradeAllowanceText="mebtcUpgradeAllowanceText()"
-            :payTokenSymbol="payTokenSymbol"
-            :payTokenDecimals="payTokenDecimals"
-            :owned="owned"
-            @approve-stats="setApproveStats"
-            @upgrade-costs="setUpgradeCosts"
-          />
-
-          <StakingCard
-            class="grid-col-2"
-            :disabled="!isConnected || !onChain"
-            :busy="stakeBusy || stakeLoading"
-            :error="stakeError"
-            :lastTx="stakeLastTx"
-            :allowanceText="mebtcAllowanceText()"
-            :stakedBalance="stakedBalance"
-            :tier="stakeTier"
-            :unlockAt="unlockAt"
-            :hashBonusBps="hashBonusBps"
-            :powerBonusBps="powerBonusBps"
-            :mebtcDecimals="mebtcDecimals"
-            :inputError="stakeInputError"
-            :onStake="stakeFromInput"
-            :onUnstake="unstakeFromInput"
-          />
-
-          <LiquidityCard
-            :disabled="!isConnected || !onChain"
-            :busy="addLiquidityBusy || removeLiquidityBusy || approveRouterBusy || routerAllowancesLoading || lpPositionLoading"
-            :error="addLiquidityError || removeLiquidityError || approveRouterError"
-            :lastTx="addLiquidityLastTx || removeLiquidityLastTx || approveRouterLastTx"
-            :lpBalanceText="lpBalanceText()"
-            :lpPositionUsdcText="positionUsdcText()"
-            :lpPositionMebtcText="positionMebtcText()"
-            :lpShareText="shareText()"
-            :poolUsdc="poolUsdc"
-            :poolMebtc="poolMebtc"
-            :onAddLiquidity="addLiquidityWithApproval"
-            :onRemoveLiquidity="removeLiquidityWithApproval"
-          />
-
-          <SwapCard
-            :disabled="!isConnected || !onChain"
-            :busy="swapBusy || approveRouterBusy"
-            :error="swapError || approveRouterError"
-            :lastTx="swapLastTx || approveRouterLastTx"
-            :poolUsdc="poolUsdc"
-            :poolMebtc="poolMebtc"
-            :usdcBalance="payToken"
-            :mebtcBalance="mebtc"
-            :onSwap="swapWithApproval"
-          />
-
-          <ClaimCard
-            class="grid-col-2"
-            :disabled="!isConnected || !onChain"
-            :owned="owned"
-            :previewMap="previewMap"
-            :selected="selected"
-            :setSelected="setSelected"
-            :busy="claimBusy"
-            :error="claimError"
-            :lastTx="claimLastTx"
-            :lastApproveTx="lastApproveTx"
-            :totalFeeSelected="totalFeeSelected"
-            :allowanceManagerText="allowanceManagerText()"
-            :mebtcAllowanceText="mebtcManagerAllowanceText()"
-            :payTokenSymbol="payTokenSymbol"
-            :payTokenDecimals="payTokenDecimals"
-            :onClaim="claimWithApproval"
-          />
-        </div>
-
-        <ApprovalPrompt
-          :open="!!approvalPrompt"
-          :tokenSymbol="approvalPrompt?.tokenSymbol ?? ''"
-          :spenderLabel="approvalPrompt?.spenderLabel ?? ''"
-          :neededText="approvalPrompt?.neededText ?? ''"
-          :allowanceText="approvalPrompt?.allowanceText ?? ''"
-          :exactEnabled="approvalPrompt?.exactEnabled ?? false"
-          :busy="approvalPromptBusy"
-          :error="approvalPromptError"
-          :onApproveExact="handleApprovalExact"
-          :onApproveMax="handleApprovalMax"
-          :onCancel="handleApprovalCancel"
+      <div class="section-grid">
+        <BalancesCard
+          class="grid-span-2"
+          :mebtc="mebtc"
+          :payToken="payToken"
+          :loading="balancesLoading"
+          :mebtcDecimals="mebtcDecimals"
+          :payTokenDecimals="payTokenDecimals"
+          :payTokenSymbol="payTokenSymbol"
+          :disabled="!isConnected || !onChain"
+          :owned="owned"
+          :stakeTier="stakeTier"
+          :hashBonusBps="hashBonusBps"
+          :powerBonusBps="powerBonusBps"
         />
-      </main>
-    </div>
+
+        <MinerPricingCard
+          :disabled="!isConnected || !onChain"
+          :allowanceMiner="allowanceMiner"
+          :actionBusy="actionBusy"
+          :actionError="actionError"
+          :actionLastTx="actionLastTx"
+          :onBuyModel="buyFromModelWithApproval"
+          :onUpgradePower="upgradePowerWithApproval"
+          :onUpgradeHash="upgradeHashWithApproval"
+          :onUpgradePowerBatch="upgradePowerBatchWithApproval"
+          :onUpgradeHashBatch="upgradeHashBatchWithApproval"
+          :mebtcUpgradeAllowanceText="mebtcUpgradeAllowanceText()"
+          :payTokenSymbol="payTokenSymbol"
+          :payTokenDecimals="payTokenDecimals"
+          :owned="owned"
+          :maxBuyQtyPerTx="maxBuyQtyPerTx"
+          :buyQueueStatus="buyQueueStatus"
+          :maxBatchIdsPerTx="maxBatchIdsPerTx"
+          :batchQueueStatus="actionQueueStatus"
+          @approve-stats="setApproveStats"
+          @upgrade-costs="setUpgradeCosts"
+        />
+
+        <StakingCard
+          class="grid-col-2"
+          :disabled="!isConnected || !onChain"
+          :busy="stakeBusy || stakeLoading"
+          :error="stakeError"
+          :lastTx="stakeLastTx"
+          :allowanceText="mebtcAllowanceText()"
+          :stakedBalance="stakedBalance"
+          :tier="stakeTier"
+          :unlockAt="unlockAt"
+          :hashBonusBps="hashBonusBps"
+          :powerBonusBps="powerBonusBps"
+          :mebtcDecimals="mebtcDecimals"
+          :inputError="stakeInputError"
+          :onStake="stakeFromInput"
+          :onUnstake="unstakeFromInput"
+        />
+
+        <LiquidityCard
+          :disabled="!isConnected || !onChain"
+          :busy="addLiquidityBusy || removeLiquidityBusy || approveRouterBusy || routerAllowancesLoading || lpPositionLoading"
+          :error="addLiquidityError || removeLiquidityError || approveRouterError"
+          :lastTx="addLiquidityLastTx || removeLiquidityLastTx || approveRouterLastTx"
+          :lpBalanceText="lpBalanceText()"
+          :lpPositionUsdcText="positionUsdcText()"
+          :lpPositionMebtcText="positionMebtcText()"
+          :lpShareText="shareText()"
+          :poolUsdc="poolUsdc"
+          :poolMebtc="poolMebtc"
+          :onAddLiquidity="addLiquidityWithApproval"
+          :onRemoveLiquidity="removeLiquidityWithApproval"
+        />
+
+        <SwapCard
+          :disabled="!isConnected || !onChain"
+          :busy="swapBusy || approveRouterBusy"
+          :error="swapError || approveRouterError"
+          :lastTx="swapLastTx || approveRouterLastTx"
+          :poolUsdc="poolUsdc"
+          :poolMebtc="poolMebtc"
+          :usdcBalance="payToken"
+          :mebtcBalance="mebtc"
+          :onSwap="swapWithApproval"
+        />
+
+        <ClaimCard
+          class="grid-col-2"
+          :disabled="!isConnected || !onChain"
+          :owned="owned"
+          :previewMap="previewMap"
+          :selected="selected"
+          :setSelected="setSelected"
+          :busy="claimBusy"
+          :error="claimError"
+          :lastTx="claimLastTx"
+          :lastApproveTx="lastApproveTx"
+          :totalFeeSelected="totalFeeSelected"
+          :allowanceManagerText="allowanceManagerText()"
+          :mebtcAllowanceText="mebtcManagerAllowanceText()"
+          :payTokenSymbol="payTokenSymbol"
+          :payTokenDecimals="payTokenDecimals"
+          :maxIdsPerTx="claimMaxIdsPerTx"
+          :claimQueueStatus="claimQueueStatus"
+          :onClaim="claimWithApproval"
+        />
+      </div>
+
+      <ApprovalPrompt
+        :open="!!approvalPrompt"
+        :tokenSymbol="approvalPrompt?.tokenSymbol ?? ''"
+        :spenderLabel="approvalPrompt?.spenderLabel ?? ''"
+        :neededText="approvalPrompt?.neededText ?? ''"
+        :allowanceText="approvalPrompt?.allowanceText ?? ''"
+        :exactEnabled="approvalPrompt?.exactEnabled ?? false"
+        :busy="approvalPromptBusy"
+        :error="approvalPromptError"
+        :onApproveExact="handleApprovalExact"
+        :onApproveMax="handleApprovalMax"
+        :onCancel="handleApprovalCancel"
+      />
+    </main>
   </div>
 </template>

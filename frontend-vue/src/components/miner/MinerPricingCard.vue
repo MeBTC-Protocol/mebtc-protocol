@@ -28,6 +28,24 @@ const props = defineProps<{
   payTokenSymbol: string
   payTokenDecimals: number
   owned: bigint[]
+  maxBuyQtyPerTx: number
+  buyQueueStatus: {
+    running: boolean
+    total: number
+    processed: number
+    currentBatchSize: number
+    remaining: number
+    note: string
+  }
+  maxBatchIdsPerTx: number
+  batchQueueStatus: {
+    running: boolean
+    total: number
+    processed: number
+    currentBatchSize: number
+    remaining: number
+    note: string
+  }
 }>()
 
 const { loading, models, error: modelErr } = useMinerModels()
@@ -274,6 +292,29 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
           buy miner (model {{ selectedModelId }}, qty {{ Math.max(1, qty || 1) }})
         </Button>
       </div>
+      <div class="ui-muted" style="margin-top:6px;font-size:12px;">
+        max {{ maxBuyQtyPerTx }} Miner pro Tx (Auto-Queue bei mehr)
+      </div>
+      <div
+        v-if="Math.max(1, Math.floor(qty || 1)) > maxBuyQtyPerTx"
+        class="ui-muted"
+        style="margin-top:4px;font-size:12px;"
+      >
+        {{ Math.max(1, Math.floor(qty || 1)) }} Miner gewählt: wird automatisch in mehrere Tx à max. {{ maxBuyQtyPerTx }} aufgeteilt.
+      </div>
+      <div
+        v-if="buyQueueStatus.total > 0"
+        class="ui-muted"
+        style="margin-top:4px;font-size:12px;"
+      >
+        buy-queue: {{ buyQueueStatus.processed }}/{{ buyQueueStatus.total }} verarbeitet
+        <span v-if="buyQueueStatus.running && buyQueueStatus.currentBatchSize > 0">
+          | aktuelle menge: {{ buyQueueStatus.currentBatchSize }}
+        </span>
+        <span v-if="buyQueueStatus.note">
+          | {{ buyQueueStatus.note }}
+        </span>
+      </div>
       <div v-if="missingForBuy > 0n" class="ui-muted" style="margin-top:6px;">
         approval needed: {{ fmt(missingForBuy) }} {{ payTokenSymbol }}
       </div>
@@ -407,8 +448,11 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
         <div class="ui-row ui-subtitle">
           <span>Batch upgrade</span>
           <span class="ui-muted upgrade-note" style="font-size:11px;">
-            (ein step pro miner)
+            (ein step pro miner, max {{ maxBatchIdsPerTx }} pro Tx)
           </span>
+        </div>
+        <div class="ui-muted" style="margin-top:4px;font-size:12px;">
+          Peak-Phase: Upgrades laufen automatisch als Queue statt alles in einer Tx.
         </div>
         <div class="ui-row" style="align-items:flex-start;">
           <textarea
@@ -427,6 +471,13 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
         </div>
         <div v-if="batchParseError" class="ui-muted" style="margin-top:6px;font-size:12px;">
           {{ batchParseError }}
+        </div>
+        <div
+          v-if="batchIds.length > maxBatchIdsPerTx"
+          class="ui-muted"
+          style="margin-top:6px;font-size:12px;"
+        >
+          {{ batchIds.length }} IDs gewählt: wird automatisch in mehrere Tx à max. {{ maxBatchIdsPerTx }} aufgeteilt.
         </div>
         <div class="ui-row" style="margin-top:6px;">
           <Button
@@ -457,6 +508,19 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
           <div v-else-if="batchHash.reason">
             hash: {{ batchHash.reason }}
           </div>
+        </div>
+        <div
+          v-if="batchQueueStatus.total > 0"
+          class="ui-muted"
+          style="margin-top:6px;font-size:12px;"
+        >
+          queue: {{ batchQueueStatus.processed }}/{{ batchQueueStatus.total }} verarbeitet
+          <span v-if="batchQueueStatus.running && batchQueueStatus.currentBatchSize > 0">
+            | aktueller batch: {{ batchQueueStatus.currentBatchSize }}
+          </span>
+          <span v-if="batchQueueStatus.note">
+            | {{ batchQueueStatus.note }}
+          </span>
         </div>
       </div>
 

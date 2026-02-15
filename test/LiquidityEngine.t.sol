@@ -149,10 +149,25 @@ contract LiquidityEngineTest is Test {
     function test_ExecuteEpochRequiresTime() public {
         LiquidityEngine engine = _deployEngine(1_000_000, 3600, 0);
 
+        // On local Anvil, timestamp starts low and first call should revert.
+        // On a mainnet fork, timestamp is already high and first call can pass.
+        if (block.timestamp < engine.epochSeconds()) {
+            vm.expectRevert(bytes("epoch"));
+            engine.executeEpoch();
+            vm.warp(engine.epochSeconds());
+            engine.executeEpoch();
+        } else {
+            engine.executeEpoch();
+        }
+
+        uint256 firstEpoch = engine.lastEpoch();
+
+        // Make the revert check deterministic on local and forked chains.
+        vm.warp(firstEpoch);
         vm.expectRevert(bytes("epoch"));
         engine.executeEpoch();
 
-        vm.warp(engine.epochSeconds());
+        vm.warp(firstEpoch + engine.epochSeconds());
         engine.executeEpoch();
 
         assertGt(engine.lastEpoch(), 0);

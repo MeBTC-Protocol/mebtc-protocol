@@ -10,7 +10,7 @@ env:
 
 jobs:
   check:
-    name: Foundry project
+    name: Foundry Regression
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,17 +24,6 @@ jobs:
         run: |
           forge --version
 
-      - name: Run Forge fmt
+      - name: Run regression suite
         run: |
-          forge fmt --check
-        id: fmt
-
-      - name: Run Forge build
-        run: |
-          forge build --sizes
-        id: build
-
-      - name: Run Forge tests
-        run: |
-          forge test -vvv
-        id: test
+          bash ops/regression/run_ci_regression.sh

@@ -20,6 +20,15 @@ const props = defineProps<{
   mebtcAllowanceText: string
   payTokenSymbol: string
   payTokenDecimals: number
+  maxIdsPerTx: number
+  claimQueueStatus: {
+    running: boolean
+    total: number
+    processed: number
+    currentBatchSize: number
+    remaining: number
+    note: string
+  }
   setSelected: (next: Record<string, boolean>) => void
   onClaim: (mebtcShareBps: number) => void
 }>()
@@ -52,12 +61,33 @@ function safeCall(fn: () => Promise<unknown> | unknown) {
       </Button>
 
       <div class="ui-muted">
+        max {{ maxIdsPerTx }} IDs pro Tx (auto-queue)
+      </div>
+
+      <div class="ui-muted">
         fee selected: {{ formatUnits(totalFeeSelected, payTokenDecimals) }} {{ payTokenSymbol }}
       </div>
 
       <div class="ui-muted">
         allowance manager: {{ allowanceManagerText }} {{ payTokenSymbol }}
       </div>
+    </div>
+
+    <div class="ui-muted" style="margin-top:6px;font-size:12px;">
+      Peak-Phase: Claims werden in einer Warteschlange mit max. {{ maxIdsPerTx }} IDs pro Tx verarbeitet.
+    </div>
+    <div
+      v-if="claimQueueStatus.total > 0"
+      class="ui-muted"
+      style="margin-top:4px;font-size:12px;"
+    >
+      queue: {{ claimQueueStatus.processed }}/{{ claimQueueStatus.total }} verarbeitet
+      <span v-if="claimQueueStatus.running && claimQueueStatus.currentBatchSize > 0">
+        | aktueller batch: {{ claimQueueStatus.currentBatchSize }}
+      </span>
+      <span v-if="claimQueueStatus.note">
+        | {{ claimQueueStatus.note }}
+      </span>
     </div>
 
     <div class="ui-row" style="margin-top:6px;">

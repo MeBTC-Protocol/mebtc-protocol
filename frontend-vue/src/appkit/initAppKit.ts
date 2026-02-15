@@ -1,10 +1,34 @@
 import { createAppKit } from '@reown/appkit/vue'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { defineChain } from '@reown/appkit/networks'
+import { html, type TemplateResult } from 'lit'
+import { WuiAvatar } from '@reown/appkit-ui/wui-avatar'
 import { ENV } from '../config/env'
 import { AVALANCHE, FUJI, TARGET_CHAIN } from '../contracts/chain'
 
+const MODAL_AVATAR_IMAGE = '/MeBTC%20Logo%20Kugel.png'
+let avatarPatched = false
+
+function patchAppKitAvatarFallback() {
+  if (avatarPatched) return
+  avatarPatched = true
+
+  const originalVisualTemplate = WuiAvatar.prototype.visualTemplate
+  WuiAvatar.prototype.visualTemplate = function mebtcAvatarFallback(
+    this: WuiAvatar
+  ): TemplateResult<1> | null {
+    if (!this.imageSrc) {
+      this.dataset.variant = 'image'
+      this.style.cssText += '\n transform: scale(1.14); transform-origin: center;'
+      return html`<wui-image src=${MODAL_AVATAR_IMAGE} alt=${this.alt ?? 'avatar'}></wui-image>`
+    }
+    return originalVisualTemplate.call(this)
+  }
+}
+
 export function initAppKit() {
+  patchAppKitAvatarFallback()
+
   const projectId = ENV.REOWN_PROJECT_ID
 
   const iconBase =

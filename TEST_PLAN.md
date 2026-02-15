@@ -358,10 +358,19 @@ P3:
 - [x] Gas-Report erstellt
 - [x] Snapshot erstellt
 - [x] Coverage erstellt (script/ ausgeschlossen; Anchor-Warnungen vorhanden)
-- [ ] Invariant Suite (MiningManager/Stake/MinerNFT Flow) – Timeout, nachgelagert
+- [x] Invariant Suite (MiningManager/Stake/MinerNFT Flow) gruen
 
 ## Status (Fork)
-- [ ] Fork Tests: blockiert (kein externer RPC erreichbar in dieser Umgebung)
+- [x] Mainnet-Fork gestartet (Avalanche C-Chain, fixer Block)
+- [x] Full Fork Test-Run ausgefuehrt
+- [x] Fork-sensitiver Test `test_ExecuteEpochRequiresTime` angepasst und gezielt verifiziert
+
+## Status (Regression & Monitoring)
+- [x] CI-Regression-Runner: fmt + build + tests + invariants + gas snapshot check
+- [x] Gas-Regression-Schwelle in CI: `forge snapshot --check --tolerance 20`
+- [x] On-chain Monitoring Skript fuer Claims/Fallback/Oracle/Emission/Supply
+- [x] Claim-Revert-Rate (slot/allowance/balance) via Telemetrie-Events + Alert-Skript (`ops/monitoring/check_telemetry_metrics.sh`)
+- [x] UI Error Rate (RPC/Timeout pro Stunde) via Frontend-Telemetrie + Alert-Skript (`ops/monitoring/check_telemetry_metrics.sh`)
 
 ## Status (Static Analysis)
 - [x] Slither ausgefuehrt (2026-02-08)

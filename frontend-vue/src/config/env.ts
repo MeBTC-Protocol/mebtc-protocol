@@ -11,6 +11,15 @@ function optional(name: string, fallback: string): string {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : fallback
 }
 
+function optionalBool(name: string, fallback: boolean): boolean {
+  const v = (import.meta.env as any)[name]
+  if (typeof v !== 'string') return fallback
+  const normalized = v.trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
+  return fallback
+}
+
 /**
  * Ethers v6 akzeptiert KEINE relative RPC-URL wie "/fuji".
  * DEV: wir erlauben "/fuji", wandeln aber zur Laufzeit in absolute URL um:
@@ -41,5 +50,9 @@ export const ENV = {
   AVALANCHE_RPC_URL: normalizeRpcUrl(
     optional('VITE_AVALANCHE_RPC_URL', 'https://api.avax.network/ext/bc/C/rpc')
   ),
-  TARGET_CHAIN_ID: optional('VITE_TARGET_CHAIN_ID', '43113')
+  TARGET_CHAIN_ID: optional('VITE_TARGET_CHAIN_ID', '43113'),
+
+  MONITORING_INGEST_URL: optional('VITE_MONITORING_INGEST_URL', ''),
+  MONITORING_ENV: optional('VITE_MONITORING_ENV', 'development'),
+  MONITORING_LOG_TO_CONSOLE: optionalBool('VITE_MONITORING_LOG_TO_CONSOLE', false)
 } as const

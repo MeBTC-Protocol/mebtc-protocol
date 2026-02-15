@@ -5,7 +5,7 @@ import Button from '../common/Button.vue'
 import { shortAddr } from '../../utils/format'
 import { useWallet } from '../../composables/useWallet'
 
-type HeaderMeta = { label: string; value: string }
+type HeaderMeta = { label: string; value: string; info?: string }
 
 defineProps<{ title: string; meta?: HeaderMeta[]; iconUrl?: string }>()
 
@@ -28,6 +28,20 @@ const buttonLabel = computed(() =>
           <div v-for="item in meta" :key="item.label" class="meta-item">
             <span class="meta-label">{{ item.label }}</span>
             <span class="meta-value">{{ item.value }}</span>
+            <span v-if="item.info" class="meta-info-wrap">
+              <button type="button" class="meta-info-btn" aria-label="Preisinfo">
+                i
+              </button>
+              <span class="meta-info-popover">
+                <span
+                  v-for="line in item.info.split('\n')"
+                  :key="line"
+                  class="meta-info-line"
+                >
+                  {{ line }}
+                </span>
+              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -38,15 +52,13 @@ const buttonLabel = computed(() =>
         <div class="wallet-button-wrap">
           <Button size="sm" variant="solid" @click="open()">
             <template #icon>
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path
-                  d="M5.5 6A2.5 2.5 0 0 0 3 8.5v7A2.5 2.5 0 0 0 5.5 18h13a2.5 2.5 0 0 0 2.5-2.5v-1h-9a3 3 0 0 1 0-6h9V8.5A2.5 2.5 0 0 0 18.5 6h-13Z"
-                  fill="currentColor"
-                />
-                <circle cx="16.5" cy="11.5" r="1.3" fill="#fff" />
-              </svg>
+              <span class="wallet-connect-icon">
+                <img src="/Geldbörse.png" alt="Wallet" />
+              </span>
             </template>
-            {{ buttonLabel }}
+            <span :class="['wallet-connect-label', isConnected ? 'wallet-address-label' : '']">
+              {{ buttonLabel }}
+            </span>
           </Button>
           <div class="wallet-status-popover">
             <div class="ui-meta">
@@ -148,7 +160,70 @@ const buttonLabel = computed(() =>
 }
 
 .wallet-connect-label {
+  font-family: 'Work Sans', sans-serif;
   font-weight: 600;
   letter-spacing: 0.2px;
+}
+
+.wallet-address-label {
+  color: #111111;
+  font-weight: 700;
+}
+
+.meta-info-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.meta-info-btn {
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-panel);
+  color: var(--ui-text-muted);
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: default;
+}
+
+.meta-info-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(420px, 82vw);
+  background: var(--ui-panel);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  box-shadow: 0 16px 30px -24px var(--ui-shadow-color);
+  padding: 10px 12px;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 10;
+}
+
+.meta-info-wrap:hover .meta-info-popover,
+.meta-info-wrap:focus-within .meta-info-popover {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.meta-info-line {
+  display: block;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.meta-info-line + .meta-info-line {
+  margin-top: 8px;
 }
 </style>

@@ -35,3 +35,8 @@ Voraussetzung: Docker Desktop (Windows/macOS) oder Docker Engine (Linux).
 
 ## Env Variablen
 Siehe `.env.example`.
+
+Monitoring-relevant:
+- `VITE_MONITORING_INGEST_URL`: optionales Ingest-Endpoint fuer Runtime-Telemetrie.
+- `VITE_MONITORING_ENV`: Label fuer die Umgebung (`development`, `staging`, `production`).
+- `VITE_MONITORING_LOG_TO_CONSOLE`: nur lokal (`true/false`), schreibt Telemetrie als JSON in die Browser-Konsole.

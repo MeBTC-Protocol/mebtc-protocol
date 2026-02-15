@@ -66,3 +66,20 @@ PRIVATE_KEY
 MANAGER_ADDRESS
 TOKEN_ID
 ```
+
+Run CI regression suite locally (tests + invariants + gas regression check):
+```
+bash ops/regression/run_ci_regression.sh
+```
+
+Run on-chain monitoring checks:
+```
+set -a; source ops/monitoring/.env.example; set +a
+bash ops/monitoring/check_onchain_metrics.sh
+```
+
+Run off-chain telemetry monitoring checks (claim revert rate + UI RPC error rate):
+```
+set -a; source ops/monitoring/.env.example; set +a
+bash ops/monitoring/check_telemetry_metrics.sh
+```
