@@ -199,13 +199,13 @@ Konkrete Tests:
 - Long-Run Emission: simulierte Summe der Rewards <= Zeitplan und <= MAX_SUPPLY.
 - Keine Emission wenn totalEffectiveHash == 0 ueber mehrere Intervalle.
 
-### D) Security & Adversarial
+### D) Security & Adversarial (Breit)
 Wo: Lokales Anvil + Mainnet-Fork [Anvil/Fork]
 Fokus:
 - Reentrancy-Szenarien bei claim/upgrade/stake/unstake (inkl. ERC777-aehnliche Tokens)
 - Access-Control Vollabdeckung: alle onlyOwner/onlyManager Funktionen negativ testen
 - Oracle-Manipulation: geringe Liquiditaet, zu kurzes TWAP-Window, Preis-Spruenge
-- Fee-Split/Decimals-Edge-Cases: 0%/100% mebtcShare, Rounding korrekt
+- Fee-Split/Decimals-Edge-Cases: 0%/30% mebtcShare, Rounding korrekt
 - Flash-Loan/MEV: Preis-Pump vor update/executeEpoch und Ruecklauf danach
 - NFT-Ownership-Edge-Cases: Transfer waehrend Pending/Claim/Upgrade
 - Non-Standard ERC20: fee-on-transfer, keine Return-Values
@@ -230,14 +230,14 @@ Erweiterte Tokenomics-Checks:
 - totalEffectiveHash == 0: blockIndex nur bei echte Intervalle; keine Reward-Zuteilung.
 - Regression: Preview/Claim identisch bei gleicher Zeit; keine Diffs nach mehrfachen preview Calls.
 
-### D) Oracle & TWAP
+### F) Oracle & TWAP
 Wo: Mainnet-Fork [Fork]
 Checks:
 - TWAP-Cache Freshness; Stale-Data Handling (USDC-only Fallback)
 - Price-Manipulation Scenarios (low liquidity)
 - Update-Timing bei Liquidity-Changes
 
-### E) Security Scenarios
+### G) Security Scenarios
 Wo: Lokales Anvil + Mainnet-Fork [Anvil/Fork]
 Threats:
 - Reentrancy-Attempts auf allen externen Calls
@@ -253,7 +253,7 @@ Konkrete Tests (Security):
 - Ownership: Miner transfer -> ownerTokens korrekt; alter Owner kann nicht mehr claimen.
 - Role Abuse: nur Owner darf setPayToken; nicht owner -> revert.
 
-### F) Performance & Load
+### H) Performance & Load
 Wo: Lokales Anvil + Mainnet-Fork [Anvil/Fork]
 Checks:
 - Gas pro Operation (claim/upgrade/stake/executeEpoch)
@@ -270,7 +270,7 @@ Konkrete Tests (Performance/Load):
 - Block-Limit Check: maximal moegliche Claims pro Block aus Gaswerten ableiten.
 - Durchsatzgrenze: claims pro Minute basierend auf CLAIM_INTERVAL und Blockgas.
 
-### F2) Invariant/Fuzz (Foundry)
+### H2) Invariant/Fuzz (Foundry)
 Wo: Lokales Anvil [Anvil]
 Checks:
 - totalEffectiveHash == Summe currentEffHash ueber alle Miner
@@ -279,7 +279,7 @@ Checks:
 - MeBTC totalSupply <= MAX_SUPPLY
 - NFT-Owner stimmt mit Handler-Tracking
 
-### G) Frontend Security & UX
+### I) Frontend Security & UX
 Wo: Fuji [Fuji]
 Checks:
 - Wallet connect, Chain-Mismatch Handling
@@ -309,7 +309,7 @@ E2E Checkliste (Fuji, End-to-End):
 - State Refresh: Page reload nach Tx -> korrekte Daten (keine stale cache).
 Hinweis: Detail-Checkliste und Pass/Fail in `TEST_ABLAUF_FUJI.md`.
 
-### H) Regression & Monitoring
+### J) Regression & Monitoring
 Wo: CI + Fuji [Fuji]
 Checks:
 - forge test + invariant suite gruen
@@ -364,6 +364,13 @@ P3:
 - [x] Mainnet-Fork gestartet (Avalanche C-Chain, fixer Block)
 - [x] Full Fork Test-Run ausgefuehrt
 - [x] Fork-sensitiver Test `test_ExecuteEpochRequiresTime` angepasst und gezielt verifiziert
+- [x] Vollstaendiger Fork-Run bestaetigt: `forge test --fork-url http://127.0.0.1:8545 --fork-block-number 78033775` -> 49/49 Tests gruen (inkl. Invariants)
+
+## Status (Fuji)
+- [x] Basisflows validiert (Buy/Claim/Upgrade/Staking/claimWithMebtc/Liquidity)
+- [x] Live-Run am 2026-02-17: Upgrade-Batches + Claim + `executeEpoch` erfolgreich (Vault-/Reserve-Deltas verifiziert)
+- [x] TWAP-Update-Check mit >=2h Fenster am 2026-02-17 verifiziert (`claim([1,3])` -> `lastGoodTimestamp` 1771350656 -> 1771358363)
+- [ ] Frontend E2E-Regression (Section 7 in `TEST_ABLAUF_FUJI.md`) noch offen
 
 ## Status (Regression & Monitoring)
 - [x] CI-Regression-Runner: fmt + build + tests + invariants + gas snapshot check

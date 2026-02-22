@@ -25,6 +25,7 @@
 
 Info (Fuji RPC Referenz):
 - https://api.avax-test.network/ext/bc/C/rpc
+- Fork-Referenz (2026-02-16): `forge test --fork-url http://127.0.0.1:8545 --fork-block-number 78033775` -> 49/49 gruen
 
 ### 1) Grundfunktionen (UI)
 - [x] Wallet verbinden (Fuji)
@@ -55,18 +56,29 @@ Info (Fuji RPC Referenz):
 - [x] Pair existiert (Address im Header sichtbar)
 
 ### 5) TWAP + Engine
-- [ ] >= 2h warten (Auto-TWAP-Fenster)
-- [ ] Claim/Upgrade ausfuehren (triggert TWAP-Update, wenn >=2h seit letztem Update)
-- [ ] LiquidityEngine.executeEpoch() ausfuehren
-- [ ] Vaults sinken, Pool-Reserven steigen (FeeVaultMeBTC benoetigt)
-- [ ] Auto-Compound sichtbar (optional, FeeVaultMeBTC/LP benoetigt)
+- [x] >= 2h warten (Auto-TWAP-Fenster)
+- [x] Claim/Upgrade ausfuehren (triggert TWAP-Update, wenn >=2h seit letztem Update)
+- [x] LiquidityEngine.executeEpoch() ausfuehren
+- [x] Vaults sinken, Pool-Reserven steigen (FeeVaultMeBTC benoetigt)
+- [x] Auto-Compound sichtbar (optional, FeeVaultMeBTC/LP benoetigt)
+
+Verifiziert am 2026-02-17 (Fuji, ChainID 43113):
+- Upgrade-Batch (Power, IDs [1,3]): `0xf3673c7c457771ef58875e5e0a9bc022565f4d51de8b9c7975f34a748c1a1746`, `0x04a3b2a4155d4d7569d331dd96c2a2fa7a17de8a1c93fc0805fe798db9787677`, `0x8d837fadc9592a49b8d23ae1ebaf3d71a5460673742a607a70ca237865375470`
+- Claim (IDs [1,3]): `0xf1fdbfaf9e9c75f10bbec361d531d58ea64bf7119948ca13a083b2f2cabd4847`
+- ExecuteEpoch: `0x7fe688d8fde88436e8ee0ac6d6712f0c1227e7c48d55d42ba093b47ee1aaec6a`
+- Effekte: `lastEpoch` 18000 -> 21600, DemandVault USDC 854000 -> 0, FeeVaultMeBTC 1867736973 -> 581336973, Pair-Reserven stiegen (USDC 161211610 -> 174075610, MeBTC 33691569437 -> 34977969437).
+- Auto-Compound im ExecuteEpoch-Receipt vorhanden (`AutoCompounded` + `EpochExecuted` Events).
+- TWAP >=2h Formalcheck am 2026-02-17: `claim([1,3])` Tx `0xe51203cade7aae5890bf917314637bebdc9cc997971c5ddf75e2e20312dcf31e`;
+  `lastTimestamp`/`lastGoodTimestamp` 1771350656 -> 1771358363 (Delta +7707s),
+  `getPriceForFees` danach wieder `fresh=true`; Oracle-Events `PriceCached` + `OracleUpdated` im Receipt vorhanden.
 
 ### 6) Fee-Split mit MeBTC
 - [x] claimWithMebtc (z. B. 30%) testen
 - [x] FeeVaultMeBTC steigt
 - [x] DemandVault USDC Restbetrag korrekt
 
-### 7) E2E-Checkliste (Frontend)
+### 7) E2E-Checkliste (Frontend, Re-Test bei neuem Deploy)
+- Status: offen als Regression-Checkliste fuer kommende Deploys; Basisflows wurden in 1-6 bereits validiert.
 - [ ] Wallet connect: connect/disconnect/reconnect
 - [ ] Netzwerkwechsel: falsches Netzwerk -> Meldung; nach Switch ok
 - [ ] Buy Flow: Approve -> Buy -> Receipt -> UI-Stats/Balances aktualisiert

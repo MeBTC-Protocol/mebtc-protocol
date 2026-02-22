@@ -73,6 +73,8 @@ The contract uses accumulator math with remainder carry to reduce long-run round
 - Users buy finalized miner models with USDC-like payment tokens (6 decimals required)
 - Primary sale split: `90%` -> Demand Vault, `10%` -> Project Wallet
 - Miner becomes active immediately after mint (no delayed activation state)
+- New miner models can only be created and finalized by the contract owner (`onlyOwner`).
+- Public users can mint miners only by buying from owner-finalized models.
 
 ### 6.2 Upgrade Model
 

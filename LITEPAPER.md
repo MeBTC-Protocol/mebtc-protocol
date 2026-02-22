@@ -34,6 +34,8 @@ The protocol combines:
 - Users buy finalized miner models in a 6-decimal payment token (USDC-style).
 - Primary sale flow: 90% to Demand Vault, 10% to Project Wallet.
 - Upgrades are queued as pending and become active after a claim.
+- New miner models are created/finalized by the contract owner only (`onlyOwner`).
+- Users can mint miners only from finalized models.
 
 Current scripted models range from entry-level (RigMiner) to high-performance (ApexMiner), each with fixed supply, price, power, and hashrate profiles.
 

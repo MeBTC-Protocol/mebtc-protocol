@@ -11,6 +11,32 @@ Ziel: reproduzierbare End-to-End Tests mit echtem Mainnet-State auf Fork.
 anvil --fork-url <RPC_URL> --fork-block-number <BLOCK>
 ```
 
+## Verifizierter Voll-Run (Referenz)
+```
+forge test --fork-url http://127.0.0.1:8545 --fork-block-number 78033775
+```
+Erwartung: kompletter Suite-Run gruen (inkl. Invariants).
+
+## Gezielte Regression: Miner Live-Switch
+Ziel: Sicherstellen, dass ein Miner-Model erst nach `finalizeModel` live ist.
+
+1) Live-Switch-Test ausfuehren:
+```
+forge test --fork-url http://127.0.0.1:8545 --match-contract MinerLiveSwitchTest -vv
+```
+Erwartung:
+- `test_LiveSwitchFinalizeUnblocksBuy()` ist `PASS`
+- vor `finalizeModel` revert mit `not live`
+- nach `finalizeModel` ist Buy erfolgreich
+
+2) Aktivierungs-Check nach Buy:
+```
+forge test --fork-url http://127.0.0.1:8545 --match-test test_BuyFromModelSetsActiveImmediately -vv
+```
+Erwartung:
+- `PASS`
+- Miner ist direkt aktiv (`currentEffHash > 0`)
+
 ## Deploy (Beispiel)
 ```
 forge script script/DeployMainnet.s.sol:DeployMainnet --rpc-url http://127.0.0.1:8545 --broadcast
@@ -32,7 +58,7 @@ BLOCK=<fixe_blocknummer>
 4) Claim Flow: vor Slot blockiert, nach Slot claimen.
 5) Upgrade Flow: Upgrade -> Pending -> Claim -> Active.
 6) claimWithMebtc: TWAP ready, price > 0.
-7) Oracle-Stale: wenn TWAP nicht ready, Tx muss failen.
+7) Oracle-Stale: wenn TWAP nicht ready oder price=0, USDC-only Fallback (kein Revert).
 8) Batch-Claim: viele Miner, Gas/Throughput notieren.
 
 ## Dokumentation
