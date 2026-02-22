@@ -64,7 +64,7 @@ const viewMode = ref<'tiles' | 'list'>('tiles')
 </script>
 
 <template>
-  <Card title="Balances">
+  <Card title="Balances" collapsible>
     <div v-if="loading">loading…</div>
 
     <div v-else class="ui-stack">

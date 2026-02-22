@@ -25,10 +25,33 @@ const props = defineProps<{
 
 const amount = ref("")
 const tierOptions = [
-  { label: "Tier 1 (10k)", amount: "10000", bonus: "+5% Hash / -5% Power", lock: "30d" },
-  { label: "Tier 2 (50k)", amount: "50000", bonus: "+10% Hash / -12% Power", lock: "90d" },
-  { label: "Tier 3 (250k)", amount: "250000", bonus: "+15% Hash / -20% Power", lock: "180d" }
+  {
+    label: "Tier 1 (10k)",
+    amount: "10000",
+    bonus: "+5% Hash / -5% Power",
+    lock: "30d"
+  },
+  {
+    label: "Tier 2 (50k)",
+    amount: "50000",
+    bonus: "+10% Hash / -12% Power",
+    lock: "90d"
+  },
+  {
+    label: "Tier 3 (250k)",
+    amount: "250000",
+    bonus: "+15% Hash / -20% Power",
+    lock: "180d"
+  }
 ]
+
+const stakingTitleInfo = [
+  "Tier 1 ab 10.000 MeBTC: +5% Hash / -5% Power, Lock 30d",
+  "Tier 2 ab 50.000 MeBTC: +10% Hash / -12% Power, Lock 90d",
+  "Tier 3 ab 250.000 MeBTC: +15% Hash / -20% Power, Lock 180d",
+  "Der Tier richtet sich nach dem gesamten Stake (z. B. 10k + 40k = Tier 2).",
+  "Bei Tier-Aufstieg wird die Unlock-Zeit auf die neue Lock-Dauer verlaengert."
+].join("\n")
 
 const unlockLabel = computed(() => {
   if (!props.unlockAt) return "-"
@@ -46,6 +69,13 @@ const tierLabel = computed(() => {
   return `Tier ${props.tier}`
 })
 
+const stakeHelp = "Fuehrt Stake mit dem Betrag aus dem Eingabefeld aus."
+
+const unstakeHelp = computed(() => {
+  if (isLocked.value) return `Unstake gesperrt bis ${unlockLabel.value}.`
+  return "Fuehrt Unstake mit dem Betrag aus dem Eingabefeld aus."
+})
+
 function safeCall(fn: () => Promise<unknown> | unknown) {
   Promise.resolve(fn()).catch(() => {})
 }
@@ -53,7 +83,7 @@ function safeCall(fn: () => Promise<unknown> | unknown) {
 </script>
 
 <template>
-  <Card title="Staking">
+  <Card title="Staking" :title-info="stakingTitleInfo" compact collapsible>
     <div class="ui-row">
       <div class="ui-muted">
         staked: {{ formatUnits(stakedBalance, mebtcDecimals || TOKENS.mebtc.decimals) }} MeBTC
@@ -77,29 +107,34 @@ function safeCall(fn: () => Promise<unknown> | unknown) {
         :disabled="disabled || busy"
       />
       <div class="ui-row">
-        <Button
-          v-for="opt in tierOptions"
-          :key="opt.label"
-          :disabled="disabled || busy"
-          @click="amount = opt.amount"
-        >
-          {{ opt.label }}
-        </Button>
-      </div>
-      <div class="ui-row ui-muted" style="gap:16px;">
-        <div v-for="opt in tierOptions" :key="opt.label">
-          {{ opt.label }}: {{ opt.bonus }} (Lock {{ opt.lock }})
+        <div v-for="opt in tierOptions" :key="opt.label" class="stake-tooltip-wrap">
+          <Button :disabled="disabled || busy" @click="amount = opt.amount">
+            {{ opt.label }}
+          </Button>
+          <span class="stake-tooltip">
+            {{ opt.label }}: {{ opt.bonus }} (Lock {{ opt.lock }})
+          </span>
         </div>
       </div>
-      <Button :disabled="disabled || busy" @click="() => safeCall(() => onStake(amount))">
-        Stake
-      </Button>
-      <Button
-        :disabled="disabled || busy || isLocked"
-        @click="() => safeCall(() => onUnstake(amount))"
-      >
-        Unstake
-      </Button>
+      <div class="stake-tooltip-wrap">
+        <Button :disabled="disabled || busy" @click="() => safeCall(() => onStake(amount))">
+          Stake
+        </Button>
+        <span class="stake-tooltip">
+          {{ stakeHelp }}
+        </span>
+      </div>
+      <div class="stake-tooltip-wrap">
+        <Button
+          :disabled="disabled || busy || isLocked"
+          @click="() => safeCall(() => onUnstake(amount))"
+        >
+          Unstake
+        </Button>
+        <span class="stake-tooltip">
+          {{ unstakeHelp }}
+        </span>
+      </div>
     </div>
 
     <div v-if="isLocked" class="ui-muted" style="margin-top:10px;">
@@ -114,3 +149,36 @@ function safeCall(fn: () => Promise<unknown> | unknown) {
     </div>
   </Card>
 </template>
+
+<style scoped>
+.stake-tooltip-wrap {
+  position: relative;
+}
+
+.stake-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  min-width: 220px;
+  max-width: min(320px, 70vw);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-panel);
+  box-shadow: 0 16px 30px -24px var(--ui-shadow-color);
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 8px 10px;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.stake-tooltip-wrap:hover .stake-tooltip,
+.stake-tooltip-wrap:focus-within .stake-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>

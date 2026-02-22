@@ -51,7 +51,7 @@ function safeCall(fn: () => Promise<unknown> | unknown) {
 </script>
 
 <template>
-  <Card title="Claim">
+  <Card title="Claim" collapsible>
     <div class="ui-row">
       <Button
         :disabled="disabled || busy"

@@ -56,6 +56,18 @@ const upgradeTokenId = ref<string>('')
 const upgradeBatchTokenIds = ref<string>('')
 const upgradeId = computed(() => parsedUpgradeTokenId())
 const mebtcSharePercent = ref<number>(0)
+const MODEL_NAME_BY_ID: Record<number, string> = {
+  1: 'RigMiner',
+  2: 'BasicMiner',
+  3: 'MeMiner',
+  4: 'ProMiner',
+  5: 'PrimeMiner',
+  6: 'ApexMiner'
+}
+
+function modelName(modelId: number) {
+  return MODEL_NAME_BY_ID[modelId] ?? `Model ${modelId}`
+}
 
 // helpers: macht formatUnits crash-proof
 function bn(v: unknown): bigint {
@@ -258,7 +270,7 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
 </script>
 
 <template>
-  <Card title="Miner pricing/Buy and upgrade ">
+  <Card title="Miner pricing/Buy and upgrade " collapsible>
     <div v-if="loading">loading models…</div>
     <div v-else-if="modelErr">
       <ErrorPopupInline :error="modelErr" context="Modelle laden" />
@@ -270,7 +282,7 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
           model:
           <select v-model.number="selectedModelId" class="ui-select">
             <option v-for="m in models" :key="m.modelId" :value="m.modelId">
-              {{ m.modelId }} ({{ m.finalized ? 'live' : 'not live' }})
+              {{ modelName(m.modelId) }} ({{ m.finalized ? 'live' : 'not live' }})
             </option>
           </select>
         </label>

@@ -100,7 +100,7 @@ function safeCall(fn: () => Promise<unknown> | unknown) {
 </script>
 
 <template>
-  <Card title="Swap">
+  <Card title="Swap" compact collapsible>
     <div class="ui-subtitle" style="margin-top:8px;">Swap direction</div>
     <div class="ui-row">
       <Button size="sm" :disabled="disabled || busy" @click="toggleDirection">

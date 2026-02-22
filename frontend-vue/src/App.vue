@@ -790,7 +790,29 @@ const headerMeta = computed(() => {
           :powerBonusBps="powerBonusBps"
         />
 
+        <ClaimCard
+          class="grid-span-2"
+          :disabled="!isConnected || !onChain"
+          :owned="owned"
+          :previewMap="previewMap"
+          :selected="selected"
+          :setSelected="setSelected"
+          :busy="claimBusy"
+          :error="claimError"
+          :lastTx="claimLastTx"
+          :lastApproveTx="lastApproveTx"
+          :totalFeeSelected="totalFeeSelected"
+          :allowanceManagerText="allowanceManagerText()"
+          :mebtcAllowanceText="mebtcManagerAllowanceText()"
+          :payTokenSymbol="payTokenSymbol"
+          :payTokenDecimals="payTokenDecimals"
+          :maxIdsPerTx="claimMaxIdsPerTx"
+          :claimQueueStatus="claimQueueStatus"
+          :onClaim="claimWithApproval"
+        />
+
         <MinerPricingCard
+          class="grid-span-2"
           :disabled="!isConnected || !onChain"
           :allowanceMiner="allowanceMiner"
           :actionBusy="actionBusy"
@@ -813,25 +835,21 @@ const headerMeta = computed(() => {
           @upgrade-costs="setUpgradeCosts"
         />
 
-        <StakingCard
-          class="grid-col-2"
+        <SwapCard
+          class="grid-span-2"
           :disabled="!isConnected || !onChain"
-          :busy="stakeBusy || stakeLoading"
-          :error="stakeError"
-          :lastTx="stakeLastTx"
-          :allowanceText="mebtcAllowanceText()"
-          :stakedBalance="stakedBalance"
-          :tier="stakeTier"
-          :unlockAt="unlockAt"
-          :hashBonusBps="hashBonusBps"
-          :powerBonusBps="powerBonusBps"
-          :mebtcDecimals="mebtcDecimals"
-          :inputError="stakeInputError"
-          :onStake="stakeFromInput"
-          :onUnstake="unstakeFromInput"
+          :busy="swapBusy || approveRouterBusy"
+          :error="swapError || approveRouterError"
+          :lastTx="swapLastTx || approveRouterLastTx"
+          :poolUsdc="poolUsdc"
+          :poolMebtc="poolMebtc"
+          :usdcBalance="payToken"
+          :mebtcBalance="mebtc"
+          :onSwap="swapWithApproval"
         />
 
         <LiquidityCard
+          class="grid-span-2"
           :disabled="!isConnected || !onChain"
           :busy="addLiquidityBusy || removeLiquidityBusy || approveRouterBusy || routerAllowancesLoading || lpPositionLoading"
           :error="addLiquidityError || removeLiquidityError || approveRouterError"
@@ -846,37 +864,22 @@ const headerMeta = computed(() => {
           :onRemoveLiquidity="removeLiquidityWithApproval"
         />
 
-        <SwapCard
+        <StakingCard
+          class="grid-span-2"
           :disabled="!isConnected || !onChain"
-          :busy="swapBusy || approveRouterBusy"
-          :error="swapError || approveRouterError"
-          :lastTx="swapLastTx || approveRouterLastTx"
-          :poolUsdc="poolUsdc"
-          :poolMebtc="poolMebtc"
-          :usdcBalance="payToken"
-          :mebtcBalance="mebtc"
-          :onSwap="swapWithApproval"
-        />
-
-        <ClaimCard
-          class="grid-col-2"
-          :disabled="!isConnected || !onChain"
-          :owned="owned"
-          :previewMap="previewMap"
-          :selected="selected"
-          :setSelected="setSelected"
-          :busy="claimBusy"
-          :error="claimError"
-          :lastTx="claimLastTx"
-          :lastApproveTx="lastApproveTx"
-          :totalFeeSelected="totalFeeSelected"
-          :allowanceManagerText="allowanceManagerText()"
-          :mebtcAllowanceText="mebtcManagerAllowanceText()"
-          :payTokenSymbol="payTokenSymbol"
-          :payTokenDecimals="payTokenDecimals"
-          :maxIdsPerTx="claimMaxIdsPerTx"
-          :claimQueueStatus="claimQueueStatus"
-          :onClaim="claimWithApproval"
+          :busy="stakeBusy || stakeLoading"
+          :error="stakeError"
+          :lastTx="stakeLastTx"
+          :allowanceText="mebtcAllowanceText()"
+          :stakedBalance="stakedBalance"
+          :tier="stakeTier"
+          :unlockAt="unlockAt"
+          :hashBonusBps="hashBonusBps"
+          :powerBonusBps="powerBonusBps"
+          :mebtcDecimals="mebtcDecimals"
+          :inputError="stakeInputError"
+          :onStake="stakeFromInput"
+          :onUnstake="unstakeFromInput"
         />
       </div>
 

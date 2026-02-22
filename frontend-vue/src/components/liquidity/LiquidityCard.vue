@@ -97,7 +97,7 @@ function onMebtcInput() {
 </script>
 
 <template>
-  <Card title="Liquidity">
+  <Card title="Liquidity" compact collapsible>
     <div class="ui-row">
       <div class="ui-muted">LP balance: {{ lpBalanceText }}</div>
       <div class="ui-muted">
@@ -124,9 +124,6 @@ function onMebtcInput() {
         :disabled="disabled || busy"
         @input="onMebtcInput"
       />
-    </div>
-
-    <div class="ui-row">
       <Button
         :disabled="disabled || busy"
         @click="() => safeCall(() => onAddLiquidity(usdcAmount, mebtcAmount))"
