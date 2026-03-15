@@ -40,7 +40,14 @@ contract MinerLiveSwitchTest is Test {
             address(oracle)
         );
 
-        manager.init(address(mebtc), address(miner), address(stakeVault), demandVault, feeVaultMeBTC, address(oracle));
+        manager.init(
+            address(mebtc),
+            address(miner),
+            address(stakeVault),
+            demandVault,
+            feeVaultMeBTC,
+            address(oracle)
+        );
         miner.setManager(address(manager));
 
         uint256[4] memory powerCosts = [uint256(50_000), 150_000, 400_000, 1_000_000];
@@ -59,7 +66,7 @@ contract MinerLiveSwitchTest is Test {
 
         miner.finalizeModel(1);
 
-        (, , , , , bool finalized, , , ,) = miner.getModel(1);
+        (,,,,, bool finalized,,,,) = miner.getModel(1);
         assertTrue(finalized);
 
         vm.prank(user);

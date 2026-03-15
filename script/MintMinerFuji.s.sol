@@ -45,7 +45,7 @@ contract MintMinerFuji is Script {
         address user = vm.addr(pk);
 
         address minerAddr = vm.envAddress("MINER_ADDRESS");
-        address usdcAddr  = vm.envAddress("USDC_ADDRESS");
+        address usdcAddr = vm.envAddress("USDC_ADDRESS");
 
         MinerNFT miner = MinerNFT(minerAddr);
         IERC20 usdc = IERC20(usdcAddr);
@@ -85,7 +85,8 @@ contract MintMinerFuji is Script {
             h[3] = vm.envUint("HASH_COST_3");
 
             uint256 minLiq = 0; // new models via script default to no liquidity gate; set via setLiquidityOracle if needed
-            uint16 newId = miner.addModel(baseHash, basePower, maxSupplyNew, price, minLiq, uri, p, h);
+            uint16 newId =
+                miner.addModel(baseHash, basePower, maxSupplyNew, price, minLiq, uri, p, h);
             miner.finalizeModel(newId);
 
             console2.log("Added+finalized modelId:", uint256(newId));
@@ -144,5 +145,3 @@ contract MintMinerFuji is Script {
         console2.log("First tokenId:", firstId);
     }
 }
-
-

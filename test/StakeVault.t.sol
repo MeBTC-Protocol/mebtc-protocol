@@ -18,7 +18,8 @@ contract StakeVaultTest is MeBTCTestBase {
         stakeVault.stake(amount);
         vm.stopPrank();
 
-        (uint256 balance, uint8 tier, uint64 unlockAt, uint16 hashBonusBps, uint16 powerBonusBps) = stakeVault.getStakeInfo(user);
+        (uint256 balance, uint8 tier, uint64 unlockAt, uint16 hashBonusBps, uint16 powerBonusBps) =
+            stakeVault.getStakeInfo(user);
 
         assertEq(balance, amount);
         assertEq(tier, 1);
@@ -73,7 +74,8 @@ contract StakeVaultTest is MeBTCTestBase {
         stakeVault.unstake(5_000e8);
         vm.stopPrank();
 
-        (uint256 balance, uint8 tier,, uint16 hashBonusBps, uint16 powerBonusBps) = stakeVault.getStakeInfo(user);
+        (uint256 balance, uint8 tier,, uint16 hashBonusBps, uint16 powerBonusBps) =
+            stakeVault.getStakeInfo(user);
         assertEq(balance, 5_000e8);
         assertEq(tier, 0);
         assertEq(hashBonusBps, 0);

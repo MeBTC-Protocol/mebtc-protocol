@@ -24,7 +24,11 @@ USDC Decimals:
 */
 
 contract SetupModels is Script {
-    function _envStringOr(string memory key, string memory fallbackValue) internal view returns (string memory) {
+    function _envStringOr(string memory key, string memory fallbackValue)
+        internal
+        view
+        returns (string memory)
+    {
         try vm.envString(key) returns (string memory v) {
             return v;
         } catch {
@@ -72,17 +76,17 @@ contract SetupModels is Script {
         // maxSupply: 50,000
         // price: 24 USDC
         uint256[4] memory rigPowerCosts = [
-            uint256(1_000_000),  // 1 USDC
-            uint256(2_000_000),  // 2 USDC
-            uint256(3_000_000),  // 3 USDC
-            uint256(5_000_000)   // 5 USDC
+            uint256(1_000_000), // 1 USDC
+            uint256(2_000_000), // 2 USDC
+            uint256(3_000_000), // 3 USDC
+            uint256(5_000_000) // 5 USDC
         ];
 
         uint256[4] memory rigHashCosts = [
-            uint256(2_000_000),  // 2 USDC
-            uint256(4_000_000),  // 4 USDC
-            uint256(6_000_000),  // 6 USDC
-            uint256(9_000_000)   // 9 USDC
+            uint256(2_000_000), // 2 USDC
+            uint256(4_000_000), // 4 USDC
+            uint256(6_000_000), // 6 USDC
+            uint256(9_000_000) // 9 USDC
         ];
 
         // -------------------------
@@ -93,17 +97,17 @@ contract SetupModels is Script {
         // maxSupply: 20,000
         // price: 49 USDC
         uint256[4] memory basicPowerCosts = [
-            uint256(1_000_000),  // 1 USDC
-            uint256(2_000_000),  // 2 USDC
-            uint256(4_000_000),  // 4 USDC
-            uint256(6_000_000)   // 6 USDC
+            uint256(1_000_000), // 1 USDC
+            uint256(2_000_000), // 2 USDC
+            uint256(4_000_000), // 4 USDC
+            uint256(6_000_000) // 6 USDC
         ];
 
         uint256[4] memory basicHashCosts = [
-            uint256(2_000_000),   // 2 USDC
-            uint256(4_000_000),   // 4 USDC
-            uint256(6_000_000),   // 6 USDC
-            uint256(10_000_000)   // 10 USDC
+            uint256(2_000_000), // 2 USDC
+            uint256(4_000_000), // 4 USDC
+            uint256(6_000_000), // 6 USDC
+            uint256(10_000_000) // 10 USDC
         ];
 
         // -------------------------
@@ -114,17 +118,17 @@ contract SetupModels is Script {
         // maxSupply: 10,000
         // price: 124 USDC
         uint256[4] memory mePowerCosts = [
-           uint256(2_000_000),   // 2 USDC
-           uint256(5_000_000),   // 5 USDC
-           uint256(9_000_000),   // 9 USDC
-           uint256(14_000_000)   // 14 USDC
+            uint256(2_000_000), // 2 USDC
+            uint256(5_000_000), // 5 USDC
+            uint256(9_000_000), // 9 USDC
+            uint256(14_000_000) // 14 USDC
         ];
 
         uint256[4] memory meHashCosts = [
-           uint256(4_000_000),   // 4 USDC
-           uint256(7_000_000),   // 7 USDC
-           uint256(12_000_000),  // 12 USDC
-           uint256(20_000_000)   // 20 USDC
+            uint256(4_000_000), // 4 USDC
+            uint256(7_000_000), // 7 USDC
+            uint256(12_000_000), // 12 USDC
+            uint256(20_000_000) // 20 USDC
         ];
 
         // -------------------------
@@ -135,17 +139,17 @@ contract SetupModels is Script {
         // maxSupply: 3,000
         // price: 349 USDC
         uint256[4] memory proPowerCosts = [
-            uint256(6_000_000),   // 6 USDC
-            uint256(12_000_000),  // 12 USDC
-            uint256(19_000_000),  // 19 USDC
-            uint256(31_000_000)   // 31 USDC
+            uint256(6_000_000), // 6 USDC
+            uint256(12_000_000), // 12 USDC
+            uint256(19_000_000), // 19 USDC
+            uint256(31_000_000) // 31 USDC
         ];
 
         uint256[4] memory proHashCosts = [
-            uint256(10_000_000),  // 10 USDC
-            uint256(19_000_000),  // 19 USDC
-            uint256(31_000_000),  // 31 USDC
-            uint256(50_000_000)   // 50 USDC
+            uint256(10_000_000), // 10 USDC
+            uint256(19_000_000), // 19 USDC
+            uint256(31_000_000), // 31 USDC
+            uint256(50_000_000) // 50 USDC
         ];
 
         // -------------------------
@@ -156,17 +160,17 @@ contract SetupModels is Script {
         // maxSupply: 800
         // price: 749 USDC
         uint256[4] memory primePowerCosts = [
-            uint256(10_000_000),  // 10 USDC
-            uint256(20_000_000),  // 20 USDC
-            uint256(35_000_000),  // 35 USDC
-            uint256(55_000_000)   // 55 USDC
+            uint256(10_000_000), // 10 USDC
+            uint256(20_000_000), // 20 USDC
+            uint256(35_000_000), // 35 USDC
+            uint256(55_000_000) // 55 USDC
         ];
 
         uint256[4] memory primeHashCosts = [
-            uint256(17_000_000),  // 17 USDC
-            uint256(35_000_000),  // 35 USDC
-            uint256(55_000_000),  // 55 USDC
-            uint256(90_000_000)   // 90 USDC
+            uint256(17_000_000), // 17 USDC
+            uint256(35_000_000), // 35 USDC
+            uint256(55_000_000), // 55 USDC
+            uint256(90_000_000) // 90 USDC
         ];
 
         // -------------------------
@@ -177,28 +181,28 @@ contract SetupModels is Script {
         // maxSupply: 200
         // price: 1,499 USDC
         uint256[4] memory apexPowerCosts = [
-            uint256(19_000_000),  // 19 USDC
-            uint256(37_000_000),  // 37 USDC
-            uint256(67_000_000),  // 67 USDC
-            uint256(105_000_000)  // 105 USDC
+            uint256(19_000_000), // 19 USDC
+            uint256(37_000_000), // 37 USDC
+            uint256(67_000_000), // 67 USDC
+            uint256(105_000_000) // 105 USDC
         ];
 
         uint256[4] memory apexHashCosts = [
-            uint256(34_000_000),  // 34 USDC
-            uint256(67_000_000),  // 67 USDC
+            uint256(34_000_000), // 34 USDC
+            uint256(67_000_000), // 67 USDC
             uint256(105_000_000), // 105 USDC
-            uint256(165_000_000)  // 165 USDC
+            uint256(165_000_000) // 165 USDC
         ];
 
         vm.startBroadcast(pk);
 
         // Add RigMiner
         uint16 rigId = miner.addModel(
-            500,                // baseHashrate
-            200,                // basePowerWatt
-            50_000,             // maxSupply
-            24_000_000,         // priceUSDC
-            0,                  // minLiquidityUsdc: always open
+            500, // baseHashrate
+            200, // basePowerWatt
+            50_000, // maxSupply
+            24_000_000, // priceUSDC
+            0, // minLiquidityUsdc: always open
             rigUri,
             rigPowerCosts,
             rigHashCosts
@@ -207,11 +211,11 @@ contract SetupModels is Script {
 
         // Add BasicMiner
         uint16 basicId = miner.addModel(
-            13_500,             // baseHashrate
-            1_350,              // basePowerWatt
-            20_000,             // maxSupply
-            49_000_000,         // priceUSDC
-            10_000_000_000,     // minLiquidityUsdc: 10,000 USDC
+            13_500, // baseHashrate
+            1_350, // basePowerWatt
+            20_000, // maxSupply
+            49_000_000, // priceUSDC
+            10_000_000_000, // minLiquidityUsdc: 10,000 USDC
             basicUri,
             basicPowerCosts,
             basicHashCosts
@@ -220,11 +224,11 @@ contract SetupModels is Script {
 
         // Add MeMiner
         uint16 meId = miner.addModel(
-            50_000,             // baseHashrate
-            2_250,              // basePowerWatt
-            10_000,             // maxSupply
-            124_000_000,        // priceUSDC
-            50_000_000_000,     // minLiquidityUsdc: 50,000 USDC
+            50_000, // baseHashrate
+            2_250, // basePowerWatt
+            10_000, // maxSupply
+            124_000_000, // priceUSDC
+            50_000_000_000, // minLiquidityUsdc: 50,000 USDC
             meUri,
             mePowerCosts,
             meHashCosts
@@ -233,11 +237,11 @@ contract SetupModels is Script {
 
         // Add ProMiner
         uint16 proId = miner.addModel(
-            104_000,            // baseHashrate
-            3_068,              // basePowerWatt
-            3_000,              // maxSupply
-            349_000_000,        // priceUSDC
-            200_000_000_000,    // minLiquidityUsdc: 200,000 USDC
+            104_000, // baseHashrate
+            3_068, // basePowerWatt
+            3_000, // maxSupply
+            349_000_000, // priceUSDC
+            200_000_000_000, // minLiquidityUsdc: 200,000 USDC
             proUri,
             proPowerCosts,
             proHashCosts
@@ -246,11 +250,11 @@ contract SetupModels is Script {
 
         // Add PrimeMiner
         uint16 primeId = miner.addModel(
-            200_000,            // baseHashrate
-            3_500,              // basePowerWatt
-            800,                // maxSupply
-            749_000_000,        // priceUSDC
-            750_000_000_000,    // minLiquidityUsdc: 750,000 USDC
+            200_000, // baseHashrate
+            3_500, // basePowerWatt
+            800, // maxSupply
+            749_000_000, // priceUSDC
+            750_000_000_000, // minLiquidityUsdc: 750,000 USDC
             primeUri,
             primePowerCosts,
             primeHashCosts
@@ -259,11 +263,11 @@ contract SetupModels is Script {
 
         // Add ApexMiner
         uint16 apexId = miner.addModel(
-            270_000,            // baseHashrate
-            3_645,              // basePowerWatt
-            200,                // maxSupply
-            1_499_000_000,      // priceUSDC
-            2_000_000_000_000,  // minLiquidityUsdc: 2,000,000 USDC
+            270_000, // baseHashrate
+            3_645, // basePowerWatt
+            200, // maxSupply
+            1_499_000_000, // priceUSDC
+            2_000_000_000_000, // minLiquidityUsdc: 2,000,000 USDC
             apexUri,
             apexPowerCosts,
             apexHashCosts

@@ -59,7 +59,6 @@ contract ListModels is Script {
                 ,
                 ,
                 ,
-
             ) = miner.getModel(uint16(i));
 
             console2.log("----");

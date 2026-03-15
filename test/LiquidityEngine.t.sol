@@ -122,7 +122,10 @@ contract LiquidityEngineTest is Test {
     TokenVault internal feeVault;
     MockFactory internal factory;
 
-    function _deployEngine(uint256 minUsdc, uint256 epochSeconds, uint16 burnBps) internal returns (LiquidityEngine) {
+    function _deployEngine(uint256 minUsdc, uint256 epochSeconds, uint16 burnBps)
+        internal
+        returns (LiquidityEngine)
+    {
         LiquidityEngine engine = new LiquidityEngine(
             address(usdc),
             address(mebtc),

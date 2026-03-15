@@ -45,12 +45,21 @@ contract LiquidityGateTest is Test {
             address(oracle)
         );
 
-        manager.init(address(mebtc), address(miner), address(stakeVault), demandVault, feeVaultMeBTC, address(oracle));
+        manager.init(
+            address(mebtc),
+            address(miner),
+            address(stakeVault),
+            demandVault,
+            feeVaultMeBTC,
+            address(oracle)
+        );
         miner.setManager(address(manager));
 
         uint256[4] memory powerCosts = [uint256(50_000), 150_000, 400_000, 1_000_000];
         uint256[4] memory hashCosts = [uint256(100_000), 250_000, 600_000, 1_500_000];
-        modelId = miner.addModel(1000, 20, 10_000, 1_000_000, THRESHOLD, "ipfs://MODEL", powerCosts, hashCosts);
+        modelId = miner.addModel(
+            1000, 20, 10_000, 1_000_000, THRESHOLD, "ipfs://MODEL", powerCosts, hashCosts
+        );
         miner.finalizeModel(modelId);
 
         payToken.mint(user, 1_000_000_000);

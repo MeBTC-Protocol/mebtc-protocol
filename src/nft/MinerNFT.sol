@@ -4,7 +4,8 @@ pragma solidity ^0.8.20;
 import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC20Metadata} from
+    "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC2981} from "openzeppelin-contracts/contracts/token/common/ERC2981.sol";
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
@@ -28,8 +29,14 @@ import {ITwapOracle} from "../core/ITwapOracle.sol";
 */
 
 interface IMiningManagerHook {
-    function onMinerTransfer(address from, address to, uint256 tokenId, uint256 baseHashRate) external;
-    function onMinerUpgradeHashChange(address owner, uint256 tokenId, uint256 oldEffHash, uint256 newEffHash) external;
+    function onMinerTransfer(address from, address to, uint256 tokenId, uint256 baseHashRate)
+        external;
+    function onMinerUpgradeHashChange(
+        address owner,
+        uint256 tokenId,
+        uint256 oldEffHash,
+        uint256 newEffHash
+    ) external;
 }
 
 interface ILiquidityOracle {
@@ -39,6 +46,7 @@ interface ILiquidityOracle {
 contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     // --------- constants ----------
+
     uint16 public constant MAX_STEPS = 4;
 
     // Hash upgrade: +2.5% pro step (250 bps)
@@ -73,16 +81,16 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     // --------- models ----------
     struct Model {
-        uint32 baseHashrate;     // in "Ghash" units as you defined (e.g. 500)
-        uint32 basePowerWatt;    // watt
+        uint32 baseHashrate; // in "Ghash" units as you defined (e.g. 500)
+        uint32 basePowerWatt; // watt
         uint32 maxSupply;
         uint32 minted;
-        uint256 priceUSDC;       // 6 decimals (1 USDC = 1_000_000)
+        uint256 priceUSDC; // 6 decimals (1 USDC = 1_000_000)
         bool finalized;
         uint256 minLiquidityUsdc; // pool USDC reserve required to buy (0 = always open)
         uint256[4] powerStepCost; // USDC costs for POWER upgrades (step0..3)
-        uint256[4] hashStepCost;  // USDC costs for HASH upgrades  (step0..3)
-        string uri;               // metadata uri (same for all tokens of the model)
+        uint256[4] hashStepCost; // USDC costs for HASH upgrades  (step0..3)
+        string uri; // metadata uri (same for all tokens of the model)
     }
 
     mapping(uint16 => Model) internal models;
@@ -90,13 +98,10 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     // --------- miner state ----------
     struct MinerState {
         uint16 modelId;
-
-        uint16 powerUpgradeBps;        // active
-        uint16 hashUpgradeBps;         // active
-
+        uint16 powerUpgradeBps; // active
+        uint16 hashUpgradeBps; // active
         uint16 pendingPowerUpgradeBps; // pending (becomes active after claim)
-        uint16 pendingHashUpgradeBps;  // pending (becomes active after claim)
-
+        uint16 pendingHashUpgradeBps; // pending (becomes active after claim)
         uint40 createdAt;
         uint40 lastClaimAt;
     }
@@ -117,9 +122,13 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     event ModelFinalized(uint16 indexed modelId);
     event LiquidityOracleSet(address oracle);
 
-    event MinerPurchased(uint256 indexed tokenId, address indexed buyer, uint16 indexed modelId, uint256 priceUSDC);
+    event MinerPurchased(
+        uint256 indexed tokenId, address indexed buyer, uint16 indexed modelId, uint256 priceUSDC
+    );
 
-    event UpgradeRequestedPower(uint256 indexed tokenId, uint16 newPendingPowerBps, uint256 costUSDC);
+    event UpgradeRequestedPower(
+        uint256 indexed tokenId, uint16 newPendingPowerBps, uint256 costUSDC
+    );
     event UpgradeRequestedHash(uint256 indexed tokenId, uint16 newPendingHashBps, uint256 costUSDC);
     event MebtcFeeFallback(address indexed payer, uint256 feeUSDC, uint8 reason);
 
@@ -196,7 +205,9 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
             m.hashStepCost[i] = hashStepCost[i];
         }
 
-        emit ModelAdded(modelId, baseHashrate, basePowerWatt, maxSupply, priceUSDC, minLiquidityUsdc, uri);
+        emit ModelAdded(
+            modelId, baseHashrate, basePowerWatt, maxSupply, priceUSDC, minLiquidityUsdc, uri
+        );
     }
 
     function setLiquidityOracle(address _oracle) external onlyOwner {
@@ -262,7 +273,11 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     }
 
     // active effective values (used by MiningManager)
-    function getMinerData(uint256 tokenId) external view returns (uint256 effHash, uint256 effPowerWatt, uint256 createdAt) {
+    function getMinerData(uint256 tokenId)
+        external
+        view
+        returns (uint256 effHash, uint256 effPowerWatt, uint256 createdAt)
+    {
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
         Model storage m = models[s.modelId];
@@ -287,7 +302,13 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     function getMinerConfig(uint256 tokenId)
         external
         view
-        returns (uint256 baseHashrate, uint256 basePowerWatt, uint16 hashUpgradeBps, uint16 powerUpgradeBps, uint256 createdAt)
+        returns (
+            uint256 baseHashrate,
+            uint256 basePowerWatt,
+            uint16 hashUpgradeBps,
+            uint16 powerUpgradeBps,
+            uint256 createdAt
+        )
     {
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
@@ -301,7 +322,11 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     }
 
     // --------- buying ----------
-    function buyFromModel(uint16 modelId, uint256 quantity) external nonReentrant returns (uint256 firstTokenId) {
+    function buyFromModel(uint16 modelId, uint256 quantity)
+        external
+        nonReentrant
+        returns (uint256 firstTokenId)
+    {
         require(address(manager) != address(0), "manager=0");
         require(quantity > 0, "qty=0");
         Model storage m = models[modelId];
@@ -354,7 +379,11 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     }
 
     // --------- upgrades (pending until claim) ----------
-    function requestUpgradePower(uint256 tokenId) external nonReentrant returns (uint16 newPendingPowerBps) {
+    function requestUpgradePower(uint256 tokenId)
+        external
+        nonReentrant
+        returns (uint16 newPendingPowerBps)
+    {
         return _requestUpgradePower(tokenId, 0);
     }
 
@@ -382,7 +411,11 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         return _requestUpgradePowerBatch(tokenIds, mebtcShareBps);
     }
 
-    function requestUpgradeHash(uint256 tokenId) external nonReentrant returns (uint16 newPendingHashBps) {
+    function requestUpgradeHash(uint256 tokenId)
+        external
+        nonReentrant
+        returns (uint16 newPendingHashBps)
+    {
         return _requestUpgradeHash(tokenId, 0);
     }
 
@@ -434,7 +467,10 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         }
     }
 
-    function _requestUpgradePower(uint256 tokenId, uint16 mebtcShareBps) internal returns (uint16 newPendingPowerBps) {
+    function _requestUpgradePower(uint256 tokenId, uint16 mebtcShareBps)
+        internal
+        returns (uint16 newPendingPowerBps)
+    {
         require(ownerOf(tokenId) == msg.sender, "!owner");
         require(address(manager) != address(0), "manager=0");
         MinerState storage s = minerState[tokenId];
@@ -459,7 +495,10 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         emit UpgradeRequestedPower(tokenId, newPendingPowerBps, cost);
     }
 
-    function _requestUpgradeHash(uint256 tokenId, uint16 mebtcShareBps) internal returns (uint16 newPendingHashBps) {
+    function _requestUpgradeHash(uint256 tokenId, uint16 mebtcShareBps)
+        internal
+        returns (uint16 newPendingHashBps)
+    {
         require(ownerOf(tokenId) == msg.sender, "!owner");
         require(address(manager) != address(0), "manager=0");
         MinerState storage s = minerState[tokenId];
@@ -502,7 +541,8 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         // compute old/new effHash for manager totals
         Model storage m = models[s.modelId];
 
-        uint256 oldEffHash = (uint256(m.baseHashrate) * (10_000 + uint256(s.hashUpgradeBps))) / 10_000;
+        uint256 oldEffHash =
+            (uint256(m.baseHashrate) * (10_000 + uint256(s.hashUpgradeBps))) / 10_000;
 
         // apply pending -> active
         if (s.pendingPowerUpgradeBps > 0) {
@@ -515,7 +555,8 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
             s.pendingHashUpgradeBps = 0;
         }
 
-        uint256 newEffHash = (uint256(m.baseHashrate) * (10_000 + uint256(s.hashUpgradeBps))) / 10_000;
+        uint256 newEffHash =
+            (uint256(m.baseHashrate) * (10_000 + uint256(s.hashUpgradeBps))) / 10_000;
 
         // notify manager if hash changed (owner must exist)
         address owner = _ownerOf(tokenId);
@@ -545,7 +586,10 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
         uint256 mebtcAmount = (mebtcUsdc * MEBTC_UNIT) / price;
         if (mebtcAmount > 0) {
-            if (mebtcToken.allowance(msg.sender, address(this)) < mebtcAmount || mebtcToken.balanceOf(msg.sender) < mebtcAmount) {
+            if (
+                mebtcToken.allowance(msg.sender, address(this)) < mebtcAmount
+                    || mebtcToken.balanceOf(msg.sender) < mebtcAmount
+            ) {
                 emit MebtcFeeFallback(msg.sender, costUSDC, FALLBACK_MEBTC_INSUFFICIENT);
                 payToken.safeTransferFrom(msg.sender, demandVault, costUSDC);
                 return;
@@ -562,7 +606,11 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     }
 
     // --------- ERC721 hook ----------
-    function _update(address to, uint256 tokenId, address auth) internal override returns (address from) {
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override
+        returns (address from)
+    {
         from = super._update(to, tokenId, auth);
 
         // notify manager on mint/transfer/burn
@@ -580,7 +628,12 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     }
 
     // --------- supportsInterface ----------
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC2981) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, ERC2981)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 }

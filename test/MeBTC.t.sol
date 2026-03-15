@@ -6,7 +6,6 @@ import {MiningManager} from "../src/core/MiningManager.sol";
 import {MinerNFT} from "../src/nft/MinerNFT.sol";
 
 contract MeBTCTest is MeBTCTestBase {
-
     function test_PayTokenDecimalsEnforced() public {
         MockPayToken badToken = new MockPayToken("Bad", "BAD", 18);
 
@@ -14,7 +13,16 @@ contract MeBTCTest is MeBTCTestBase {
         new MiningManager(address(badToken));
 
         vm.expectRevert(bytes("decimals"));
-        new MinerNFT(address(badToken), demandVault, feeVaultMeBTC, project, royalty, 0, address(mebtc), address(oracle));
+        new MinerNFT(
+            address(badToken),
+            demandVault,
+            feeVaultMeBTC,
+            project,
+            royalty,
+            0,
+            address(mebtc),
+            address(oracle)
+        );
 
         vm.expectRevert(bytes("decimals"));
         manager.setPayToken(address(badToken));

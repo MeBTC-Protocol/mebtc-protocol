@@ -21,6 +21,7 @@ interface IJoePair {
 
 contract LiquidityEngine {
     using SafeERC20 for IERC20;
+
     uint16 public constant BPS = 10_000;
     uint16 public constant MAX_BURN_BPS = 2_000;
     uint8 public constant USDC_DECIMALS = 6;
@@ -123,7 +124,11 @@ contract LiquidityEngine {
         emit EpochExecuted(lastEpoch, usdcIn, mebtcIn, minted);
     }
 
-    function _capByMin(uint256 usdcBal, uint256 mebtcBal) internal pure returns (uint256 usdcIn, uint256 mebtcIn) {
+    function _capByMin(uint256 usdcBal, uint256 mebtcBal)
+        internal
+        pure
+        returns (uint256 usdcIn, uint256 mebtcIn)
+    {
         uint256 usdcNorm = usdcBal * 10 ** (MEBTC_DECIMALS - USDC_DECIMALS);
         if (usdcNorm <= mebtcBal) {
             usdcIn = usdcBal;
@@ -134,7 +139,11 @@ contract LiquidityEngine {
         }
     }
 
-    function _sortAmounts(address lp, uint256 amount0, uint256 amount1) internal view returns (uint256 usdcAmt, uint256 mebtcAmt) {
+    function _sortAmounts(address lp, uint256 amount0, uint256 amount1)
+        internal
+        view
+        returns (uint256 usdcAmt, uint256 mebtcAmt)
+    {
         if (IJoePair(lp).token0() == usdc) {
             usdcAmt = amount0;
             mebtcAmt = amount1;
@@ -144,7 +153,10 @@ contract LiquidityEngine {
         }
     }
 
-    function _mintLiquidity(address lp, uint256 usdcAmt, uint256 mebtcAmt) internal returns (uint256 minted) {
+    function _mintLiquidity(address lp, uint256 usdcAmt, uint256 mebtcAmt)
+        internal
+        returns (uint256 minted)
+    {
         if (usdcAmt == 0 || mebtcAmt == 0) return 0;
         IERC20(usdc).safeTransfer(lp, usdcAmt);
         IERC20(mebtc).safeTransfer(lp, mebtcAmt);

@@ -33,7 +33,9 @@ contract StakeVault is ReentrancyGuard {
     mapping(address => uint256) public stakedBalance;
     mapping(address => uint64) public unlockTime;
 
-    event Staked(address indexed user, uint256 amount, uint256 newBalance, uint8 tier, uint64 unlockAt);
+    event Staked(
+        address indexed user, uint256 amount, uint256 newBalance, uint8 tier, uint64 unlockAt
+    );
     event Unstaked(address indexed user, uint256 amount, uint256 newBalance, uint8 tier);
 
     constructor(address _mebtc, address _miningManager) {
@@ -84,7 +86,13 @@ contract StakeVault is ReentrancyGuard {
     function getStakeInfo(address user)
         external
         view
-        returns (uint256 balance, uint8 tier, uint64 unlockAt, uint16 hashBonusBps, uint16 powerBonusBps)
+        returns (
+            uint256 balance,
+            uint8 tier,
+            uint64 unlockAt,
+            uint16 hashBonusBps,
+            uint16 powerBonusBps
+        )
     {
         balance = stakedBalance[user];
         tier = _tierForBalance(balance);
@@ -99,7 +107,11 @@ contract StakeVault is ReentrancyGuard {
         return 0;
     }
 
-    function _bonusesForTier(uint8 tier) internal pure returns (uint16 hashBonusBps, uint16 powerBonusBps) {
+    function _bonusesForTier(uint8 tier)
+        internal
+        pure
+        returns (uint16 hashBonusBps, uint16 powerBonusBps)
+    {
         if (tier == 1) return (TIER1_HASH_BPS, TIER1_POWER_BPS);
         if (tier == 2) return (TIER2_HASH_BPS, TIER2_POWER_BPS);
         if (tier == 3) return (TIER3_HASH_BPS, TIER3_POWER_BPS);

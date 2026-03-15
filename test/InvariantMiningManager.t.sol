@@ -253,7 +253,14 @@ contract InvariantMiningManagerTest is StdInvariant, Test {
         );
         stakeVault = new StakeVault(address(mebtc), address(manager));
 
-        manager.init(address(mebtc), address(miner), address(stakeVault), demandVault, feeVaultMeBTC, address(oracle));
+        manager.init(
+            address(mebtc),
+            address(miner),
+            address(stakeVault),
+            demandVault,
+            feeVaultMeBTC,
+            address(oracle)
+        );
         miner.setManager(address(manager));
 
         uint256[4] memory powerCosts = [uint256(50_000), 150_000, 400_000, 1_000_000];

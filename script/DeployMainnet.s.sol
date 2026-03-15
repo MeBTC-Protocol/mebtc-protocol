@@ -86,20 +86,15 @@ contract DeployMainnet is Script {
         }
 
         LiquidityEngine engine = new LiquidityEngine(
-            PAY,
-            address(mebtc),
-            FACTORY,
-            DEMAND,
-            FEE_MEBTC,
-            MIN_USDC,
-            EPOCH,
-            BURN_BPS
+            PAY, address(mebtc), FACTORY, DEMAND, FEE_MEBTC, MIN_USDC, EPOCH, BURN_BPS
         );
 
         TokenVault(DEMAND).init(address(engine));
         TokenVault(FEE_MEBTC).init(address(engine));
 
-        MinerNFT miner = new MinerNFT(PAY, DEMAND, FEE_MEBTC, PROJECT, ROYALTY, ROYALTY_BPS, address(mebtc), TWAP);
+        MinerNFT miner = new MinerNFT(
+            PAY, DEMAND, FEE_MEBTC, PROJECT, ROYALTY, ROYALTY_BPS, address(mebtc), TWAP
+        );
 
         manager.init(address(mebtc), address(miner), address(stakeVault), DEMAND, FEE_MEBTC, TWAP);
         miner.setManager(address(manager));

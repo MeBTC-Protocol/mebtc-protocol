@@ -63,7 +63,8 @@ contract TwapOracleJoeV2Test is Test {
     }
 
     function test_IsReadyFalseWhenLiquidityLow() public {
-        (TwapOracleJoeV2 oracle,) = _deployOracle(100_000_000, 500_000, uint32(block.timestamp), 0, 0);
+        (TwapOracleJoeV2 oracle,) =
+            _deployOracle(100_000_000, 500_000, uint32(block.timestamp), 0, 0);
         assertFalse(oracle.isReady());
     }
 
@@ -82,7 +83,8 @@ contract TwapOracleJoeV2Test is Test {
     }
 
     function test_PriceRevertsWhenLiquidityLow() public {
-        (TwapOracleJoeV2 oracle,) = _deployOracle(100_000_000, 500_000, uint32(block.timestamp), 0, 0);
+        (TwapOracleJoeV2 oracle,) =
+            _deployOracle(100_000_000, 500_000, uint32(block.timestamp), 0, 0);
         vm.expectRevert(bytes("liquidity"));
         oracle.priceMebtcInUsdc();
     }

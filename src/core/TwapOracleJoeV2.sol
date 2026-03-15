@@ -6,7 +6,10 @@ import {ITwapOracle} from "./ITwapOracle.sol";
 interface IJoePairLike {
     function token0() external view returns (address);
     function token1() external view returns (address);
-    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+    function getReserves()
+        external
+        view
+        returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
     function price0CumulativeLast() external view returns (uint256);
     function price1CumulativeLast() external view returns (uint256);
 }
@@ -53,7 +56,7 @@ contract TwapOracleJoeV2 is ITwapOracle {
 
         price0CumulativeLast = pair.price0CumulativeLast();
         price1CumulativeLast = pair.price1CumulativeLast();
-        (, , uint32 ts) = pair.getReserves();
+        (,, uint32 ts) = pair.getReserves();
         lastTimestamp = ts;
     }
 
@@ -65,7 +68,7 @@ contract TwapOracleJoeV2 is ITwapOracle {
         (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
         if (_usdcReserve(reserve0, reserve1) < minUsdcLiquidity) return false;
 
-        (, , uint32 blockTimestamp) = _currentCumulativePrices();
+        (,, uint32 blockTimestamp) = _currentCumulativePrices();
         uint32 elapsed = blockTimestamp - lastTimestamp;
         return elapsed >= window;
     }
@@ -74,7 +77,8 @@ contract TwapOracleJoeV2 is ITwapOracle {
         (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
         require(_usdcReserve(reserve0, reserve1) >= minUsdcLiquidity, "liquidity");
 
-        (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) = _currentCumulativePrices();
+        (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) =
+            _currentCumulativePrices();
         uint32 elapsed = blockTimestamp - lastTimestamp;
         require(elapsed >= window, "window");
 
@@ -92,7 +96,8 @@ contract TwapOracleJoeV2 is ITwapOracle {
     }
 
     function updateIfDue() public returns (bool updated) {
-        (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) = _currentCumulativePrices();
+        (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) =
+            _currentCumulativePrices();
         if (blockTimestamp <= lastTimestamp) return false;
 
         uint32 elapsed = blockTimestamp - lastTimestamp;

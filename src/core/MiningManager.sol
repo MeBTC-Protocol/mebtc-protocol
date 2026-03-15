@@ -4,7 +4,8 @@ pragma solidity ^0.8.20;
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC20Metadata} from
+    "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ITwapOracle} from "./ITwapOracle.sol";
 
@@ -33,11 +34,20 @@ interface IMeBTC {
 interface IMinerNFT {
     function ownerOf(uint256 tokenId) external view returns (address);
 
-    function getMinerData(uint256 tokenId) external view returns (uint256 effHash, uint256 effPowerWatt, uint256 createdAt);
+    function getMinerData(uint256 tokenId)
+        external
+        view
+        returns (uint256 effHash, uint256 effPowerWatt, uint256 createdAt);
     function getMinerConfig(uint256 tokenId)
         external
         view
-        returns (uint256 baseHashrate, uint256 basePowerWatt, uint16 hashUpgradeBps, uint16 powerUpgradeBps, uint256 createdAt);
+        returns (
+            uint256 baseHashrate,
+            uint256 basePowerWatt,
+            uint16 hashUpgradeBps,
+            uint16 powerUpgradeBps,
+            uint256 createdAt
+        );
 
     function setLastClaimAt(uint256 tokenId, uint40 ts) external;
 
@@ -49,20 +59,27 @@ interface IStakeVault {
     function getStakeInfo(address user)
         external
         view
-        returns (uint256 balance, uint8 tier, uint64 unlockAt, uint16 hashBonusBps, uint16 powerBonusBps);
+        returns (
+            uint256 balance,
+            uint8 tier,
+            uint64 unlockAt,
+            uint16 hashBonusBps,
+            uint16 powerBonusBps
+        );
 }
 
 contract MiningManager is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
-    uint256 public constant CLAIM_INTERVAL = 600;       // 10 Minuten
-    uint256 public constant HALVING_BLOCKS = 210_000;   // Slots bis Halving
+
+    uint256 public constant CLAIM_INTERVAL = 600; // 10 Minuten
+    uint256 public constant HALVING_BLOCKS = 210_000; // Slots bis Halving
     uint8 public constant MEBTC_DECIMALS = 8;
     uint256 private constant MEBTC_UNIT = 1e8;
     uint256 public constant INITIAL_REWARD = 50 * MEBTC_UNIT; // MBTC pro Slot (Netzwerk)
     uint256 public constant MAX_SLOTS_PER_UPDATE = 1000;
 
-    uint256 public constant FEE_PER_KWH = 150_000;      // 0.15 USDC (6 dec)
-    uint256 private constant KWH_DENOM = 3_600_000;     // 1000*3600
+    uint256 public constant FEE_PER_KWH = 150_000; // 0.15 USDC (6 dec)
+    uint256 private constant KWH_DENOM = 3_600_000; // 1000*3600
 
     uint16 public constant MAX_MEBTC_SHARE_BPS = 3000; // 30%
     uint8 private constant FALLBACK_TWAP_STALE = 1;
@@ -73,8 +90,8 @@ contract MiningManager is ReentrancyGuard, Ownable {
     address public feeVaultMeBTC;
     ITwapOracle public twapOracle;
 
-    IMeBTC      public meBTC;
-    IMinerNFT   public minerNFT;
+    IMeBTC public meBTC;
+    IMinerNFT public minerNFT;
     IStakeVault public stakeVault;
 
     address private initializer;
@@ -84,7 +101,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
     uint256 public currentReward;
 
     uint256 public accRewardPerEffHash; // 1e12 scale
-    uint256 public accRewardRemainder;  // reward*1e12 remainder carried across slots
+    uint256 public accRewardRemainder; // reward*1e12 remainder carried across slots
     uint256 public totalEffectiveHash;
 
     mapping(uint256 => uint256) public lastAccPerHash;
@@ -100,13 +117,26 @@ contract MiningManager is ReentrancyGuard, Ownable {
 
     event Updated(uint256 slots, uint256 minted, uint256 acc);
     event RewardsClaimed(address indexed user, uint256 reward, uint256 fee);
-    event MinerMoved(address indexed from, address indexed to, uint256 indexed tokenId, uint256 effHashAdded);
-    event MinerUpgraded(address indexed owner, uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
-    event Initialized(address mebtc, address miner, address stakeVault, address demandVault, address feeVaultMeBTC, address twapOracle);
+    event MinerMoved(
+        address indexed from, address indexed to, uint256 indexed tokenId, uint256 effHashAdded
+    );
+    event MinerUpgraded(
+        address indexed owner, uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash
+    );
+    event Initialized(
+        address mebtc,
+        address miner,
+        address stakeVault,
+        address demandVault,
+        address feeVaultMeBTC,
+        address twapOracle
+    );
     event PayTokenUpdated(address indexed oldToken, address indexed newToken);
     event MinerResynced(uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
     event MebtcFeeFallback(address indexed payer, uint256 feeUSDC, uint8 reason);
-    event MinerTransferCleared(uint256 indexed tokenId, address indexed from, uint256 rewardCleared, uint256 debtCleared);
+    event MinerTransferCleared(
+        uint256 indexed tokenId, address indexed from, uint256 rewardCleared, uint256 debtCleared
+    );
     event RewardsCapped(address indexed user, uint256 requested, uint256 actual, uint256 capRemain);
 
     modifier onlyInit() {
@@ -141,21 +171,15 @@ contract MiningManager is ReentrancyGuard, Ownable {
         address _twapOracle
     ) external onlyInit {
         require(
-            address(meBTC) == address(0) &&
-                address(minerNFT) == address(0) &&
-                address(stakeVault) == address(0) &&
-                demandVault == address(0) &&
-                feeVaultMeBTC == address(0) &&
-                address(twapOracle) == address(0),
+            address(meBTC) == address(0) && address(minerNFT) == address(0)
+                && address(stakeVault) == address(0) && demandVault == address(0)
+                && feeVaultMeBTC == address(0) && address(twapOracle) == address(0),
             "inited"
         );
         require(
-            _mebtc != address(0) &&
-                _miner != address(0) &&
-                _stakeVault != address(0) &&
-                _demandVault != address(0) &&
-                _feeVaultMeBTC != address(0) &&
-                _twapOracle != address(0),
+            _mebtc != address(0) && _miner != address(0) && _stakeVault != address(0)
+                && _demandVault != address(0) && _feeVaultMeBTC != address(0)
+                && _twapOracle != address(0),
             "0"
         );
 
@@ -209,7 +233,7 @@ contract MiningManager is ReentrancyGuard, Ownable {
         if (pbps > 10_000) pbps = 10_000;
         uint256 effPowerAfter = (basePower * (10_000 - pbps)) / 10_000;
 
-        (, , , uint16 stakeHashBps, uint16 stakePowerBps) = stakeVault.getStakeInfo(owner);
+        (,,, uint16 stakeHashBps, uint16 stakePowerBps) = stakeVault.getStakeInfo(owner);
 
         uint256 stakeHashBonus = (baseHash * uint256(stakeHashBps)) / 10_000;
         uint256 stakePowerBonus = (effPowerAfter * uint256(stakePowerBps)) / 10_000;
@@ -236,7 +260,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
     }
 
     // called by MinerNFT on mint/transfer
-    function onMinerTransfer(address from, address to, uint256 tokenId, uint256 /*baseHashRate*/) external {
+    function onMinerTransfer(address from, address to, uint256 tokenId, uint256 /*baseHashRate*/ )
+        external
+    {
         require(msg.sender == address(minerNFT), "!miner");
         _update();
 
@@ -254,7 +280,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
             debtUSDC[tokenId] = 0;
             emit MinerTransferCleared(tokenId, from, clearedReward, clearedDebt);
 
-            if (totalEffectiveHash >= currentEffHash[tokenId]) totalEffectiveHash -= currentEffHash[tokenId];
+            if (totalEffectiveHash >= currentEffHash[tokenId]) {
+                totalEffectiveHash -= currentEffHash[tokenId];
+            }
 
             currentEffHash[tokenId] = 0;
             currentEffPower[tokenId] = 0;
@@ -281,7 +309,12 @@ contract MiningManager is ReentrancyGuard, Ownable {
     }
 
     // called by MinerNFT ONLY when pending upgrades are applied (after claim)
-    function onMinerUpgradeHashChange(address owner, uint256 tokenId, uint256 /*oldEffHash*/, uint256 /*newEffHash*/) external {
+    function onMinerUpgradeHashChange(
+        address owner,
+        uint256 tokenId,
+        uint256, /*oldEffHash*/
+        uint256 /*newEffHash*/
+    ) external {
         require(msg.sender == address(minerNFT), "!miner");
         require(owner != address(0), "owner=0");
 
@@ -417,7 +450,10 @@ contract MiningManager is ReentrancyGuard, Ownable {
         uint256 mebtcAmount = (mebtcUsdc * MEBTC_UNIT) / price;
         if (mebtcAmount > 0) {
             IERC20 mebtcErc20 = IERC20(address(meBTC));
-            if (mebtcErc20.allowance(payer, address(this)) < mebtcAmount || mebtcErc20.balanceOf(payer) < mebtcAmount) {
+            if (
+                mebtcErc20.allowance(payer, address(this)) < mebtcAmount
+                    || mebtcErc20.balanceOf(payer) < mebtcAmount
+            ) {
                 emit MebtcFeeFallback(payer, feeUSDC, FALLBACK_MEBTC_INSUFFICIENT);
                 _collectUsdc(payer, feeUSDC);
                 return;

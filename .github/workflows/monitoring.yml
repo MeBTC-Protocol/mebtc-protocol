@@ -12,7 +12,6 @@ jobs:
   monitor_onchain:
     name: Runtime Metrics (On-Chain)
     runs-on: ubuntu-latest
-    if: ${{ secrets.MAINNET_RPC_URL != '' && secrets.MANAGER_ADDRESS != '' && secrets.MINER_ADDRESS != '' && secrets.MEBTC_ADDRESS != '' && secrets.TWAP_ORACLE_ADDRESS != '' && secrets.DEMAND_VAULT_ADDRESS != '' && secrets.FEE_VAULT_MEBTC_ADDRESS != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -20,6 +19,9 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run on-chain monitoring checks
+        # Job wird übersprungen wenn Secrets fehlen
+        if: |
+          vars.MONITORING_ENABLED == 'true'
         env:
           RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
           MANAGER_ADDRESS: ${{ secrets.MANAGER_ADDRESS }}
@@ -39,11 +41,12 @@ jobs:
   monitor_telemetry:
     name: Runtime Metrics (Telemetry)
     runs-on: ubuntu-latest
-    if: ${{ secrets.TELEMETRY_EVENTS_URL != '' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Fetch telemetry events
+        if: |
+          vars.MONITORING_ENABLED == 'true'
         env:
           TELEMETRY_EVENTS_URL: ${{ secrets.TELEMETRY_EVENTS_URL }}
           TELEMETRY_AUTH_BEARER: ${{ secrets.TELEMETRY_AUTH_BEARER }}
@@ -55,6 +58,8 @@ jobs:
           curl -fsSL "${auth_args[@]}" "$TELEMETRY_EVENTS_URL" -o /tmp/mebtc-telemetry.jsonl
 
       - name: Run telemetry monitoring checks
+        if: |
+          vars.MONITORING_ENABLED == 'true'
         env:
           TELEMETRY_EVENTS_FILE: /tmp/mebtc-telemetry.jsonl
           WINDOW_MINUTES: 60
