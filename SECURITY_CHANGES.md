@@ -11,3 +11,7 @@
 - 2026-02-08: Neuer Test `test_AutoCompoundIgnoresFailedTokenTransfer` zeigt Risiko bei Tokens die `transfer` false returnen (LP mint ohne Token-Transfer).
 - 2026-02-08: Invariant Suite (`InvariantMiningManagerTest`) laeuft >5 Min ohne Abschluss (Timeout). Vorschlag: Token-Anzahl im Handler cappen oder Test-Depth reduzieren.
 - 2026-02-08: TWAP-Fees umgestellt: `updateIfDue()` wird in Claim/Upgrade ausgefuehrt (>=2h), Preis wird gecached; bei stale/fehlendem MeBTC -> USDC-only Fallback.
+- 2026-02-25: Invariant-Timeout entschaerft: `InvariantHandler` cappt `tokenIds` (`MAX_TRACKED_TOKENS = 120`) und `foundry.toml` nutzt `[invariant] runs=32, depth=25, fail_on_revert=false`. Ergebnis: `forge test` laeuft durch (51 passed, 0 failed).
+- 2026-02-25: P0-Tests ergaenzt: `test_ClaimWithMebtcRevertsWhenShareAboveMax`, `test_UpgradeWithMebtcRevertsWhenShareAboveMax`, neue Suites `StakeVaultTest` (Tier/Lock/Unstake) und `ResyncMinerTest` (Drift-Korrektur + Revert bei inkonsistentem Total).
+- 2026-02-25: Follow-up `share > MAX`: Contract revertiert korrekt mit `mebtc%`; die fruehere Fehlbeobachtung kam aus fehlerhaftem `expectRevert`-Setup im Test (Getter-Call nach `expectRevert`).
+- 2026-02-25: Regression-Status nach neuen Tests: `forge test` komplett gruen (59 passed, 0 failed).

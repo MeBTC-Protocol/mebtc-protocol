@@ -58,7 +58,8 @@ contract ListModels is Script {
                 bool finalized,
                 ,
                 ,
-                
+                ,
+
             ) = miner.getModel(uint16(i));
 
             console2.log("----");

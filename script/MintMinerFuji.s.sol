@@ -84,13 +84,14 @@ contract MintMinerFuji is Script {
             h[2] = vm.envUint("HASH_COST_2");
             h[3] = vm.envUint("HASH_COST_3");
 
-            uint16 newId = miner.addModel(baseHash, basePower, maxSupplyNew, price, uri, p, h);
+            uint256 minLiq = 0; // new models via script default to no liquidity gate; set via setLiquidityOracle if needed
+            uint16 newId = miner.addModel(baseHash, basePower, maxSupplyNew, price, minLiq, uri, p, h);
             miner.finalizeModel(newId);
 
             console2.log("Added+finalized modelId:", uint256(newId));
         }
 
-        // getModel gibt 9 Werte zurück -> Destructuring muss genau 9 sein
+        // getModel gibt 10 Werte zurück -> Destructuring muss genau 10 sein
         (
             uint32 baseHashrate,
             uint32 basePowerWatt,
@@ -98,6 +99,7 @@ contract MintMinerFuji is Script {
             uint32 minted,
             uint256 priceUSDC,
             bool finalized,
+            ,
             uint256[4] memory powerStepCost,
             uint256[4] memory hashStepCost,
             string memory modelUri

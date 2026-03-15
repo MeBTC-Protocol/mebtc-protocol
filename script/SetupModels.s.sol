@@ -35,6 +35,7 @@ contract SetupModels is Script {
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         address minerAddr = vm.envAddress("MINER_ADDRESS");
+        address twapOracle = vm.envAddress("TWAP_ORACLE");
 
         MinerNFT miner = MinerNFT(minerAddr);
 
@@ -197,6 +198,7 @@ contract SetupModels is Script {
             200,                // basePowerWatt
             50_000,             // maxSupply
             24_000_000,         // priceUSDC
+            0,                  // minLiquidityUsdc: always open
             rigUri,
             rigPowerCosts,
             rigHashCosts
@@ -209,6 +211,7 @@ contract SetupModels is Script {
             1_350,              // basePowerWatt
             20_000,             // maxSupply
             49_000_000,         // priceUSDC
+            10_000_000_000,     // minLiquidityUsdc: 10,000 USDC
             basicUri,
             basicPowerCosts,
             basicHashCosts
@@ -221,6 +224,7 @@ contract SetupModels is Script {
             2_250,              // basePowerWatt
             10_000,             // maxSupply
             124_000_000,        // priceUSDC
+            50_000_000_000,     // minLiquidityUsdc: 50,000 USDC
             meUri,
             mePowerCosts,
             meHashCosts
@@ -233,6 +237,7 @@ contract SetupModels is Script {
             3_068,              // basePowerWatt
             3_000,              // maxSupply
             349_000_000,        // priceUSDC
+            200_000_000_000,    // minLiquidityUsdc: 200,000 USDC
             proUri,
             proPowerCosts,
             proHashCosts
@@ -245,6 +250,7 @@ contract SetupModels is Script {
             3_500,              // basePowerWatt
             800,                // maxSupply
             749_000_000,        // priceUSDC
+            750_000_000_000,    // minLiquidityUsdc: 750,000 USDC
             primeUri,
             primePowerCosts,
             primeHashCosts
@@ -257,11 +263,25 @@ contract SetupModels is Script {
             3_645,              // basePowerWatt
             200,                // maxSupply
             1_499_000_000,      // priceUSDC
+            2_000_000_000_000,  // minLiquidityUsdc: 2,000,000 USDC
             apexUri,
             apexPowerCosts,
             apexHashCosts
         );
         console2.log("ApexMiner added modelId:", uint256(apexId));
+
+        // Finalize all models (makes them purchasable once liquidity gate passes)
+        miner.finalizeModel(rigId);
+        miner.finalizeModel(basicId);
+        miner.finalizeModel(meId);
+        miner.finalizeModel(proId);
+        miner.finalizeModel(primeId);
+        miner.finalizeModel(apexId);
+        console2.log("All models finalized.");
+
+        // Activate liquidity gate
+        miner.setLiquidityOracle(twapOracle);
+        console2.log("LiquidityOracle set:", twapOracle);
 
         vm.stopBroadcast();
     }

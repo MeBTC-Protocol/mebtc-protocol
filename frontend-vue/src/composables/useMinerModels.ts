@@ -5,7 +5,8 @@ import { ADDRESSES } from '../contracts/addresses'
 
 const MINER_ABI = [
   'function nextModelId() view returns (uint16)',
-  'function getModel(uint16 modelId) view returns (uint32,uint32,uint32,uint32,uint256,bool,uint256[4],uint256[4],string)'
+  'function getModel(uint16 modelId) view returns (uint32,uint32,uint32,uint32,uint256,bool,uint256,uint256[4],uint256[4],string)',
+  'function isModelLive(uint16 modelId) view returns (bool)'
 ]
 
 export type MinerModel = {
@@ -16,6 +17,8 @@ export type MinerModel = {
   minted: number
   priceUSDC: bigint
   finalized: boolean
+  minLiquidityUsdc: bigint
+  isLive: boolean
   powerStepCost: bigint[]
   hashStepCost: bigint[]
   uri: string
@@ -39,7 +42,10 @@ export function useMinerModels() {
       const out: MinerModel[] = []
 
       for (let id = 1; id < nextId; id++) {
-        const r = await miner.getModel(id)
+        const [r, isLiveRaw] = await Promise.all([
+          miner.getModel(id),
+          miner.isModelLive(id)
+        ])
 
         // tuple unpack
         const baseHashrate = Number(r[0])
@@ -48,9 +54,11 @@ export function useMinerModels() {
         const minted = Number(r[3])
         const priceUSDC = r[4] as bigint
         const finalized = Boolean(r[5])
-        const powerStepCost = (r[6] as bigint[]).slice()
-        const hashStepCost = (r[7] as bigint[]).slice()
-        const uri = String(r[8])
+        const minLiquidityUsdc = r[6] as bigint
+        const powerStepCost = (r[7] as bigint[]).slice()
+        const hashStepCost = (r[8] as bigint[]).slice()
+        const uri = String(r[9])
+        const isLive = Boolean(isLiveRaw)
 
         out.push({
           modelId: id,
@@ -60,6 +68,8 @@ export function useMinerModels() {
           minted,
           priceUSDC,
           finalized,
+          minLiquidityUsdc,
+          isLive,
           powerStepCost,
           hashStepCost,
           uri

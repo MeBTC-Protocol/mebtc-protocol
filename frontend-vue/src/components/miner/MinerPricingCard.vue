@@ -282,7 +282,8 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
           model:
           <select v-model.number="selectedModelId" class="ui-select">
             <option v-for="m in models" :key="m.modelId" :value="m.modelId">
-              {{ modelName(m.modelId) }} ({{ m.finalized ? 'live' : 'not live' }})
+              {{ m.isLive ? '✅' : '🔒' }} {{ modelName(m.modelId) }}
+              {{ m.isLive ? '(live)' : `(gesperrt – min. ${fmt(m.minLiquidityUsdc)} USDC Liquidität)` }}
             </option>
           </select>
         </label>
@@ -298,12 +299,21 @@ watch([upgradePowerCost, upgradeHashCost, mebtcShareBps], ([power, hash, share])
         </div>
 
         <Button
-          :disabled="disabled || actionBusy || !selectedModel"
+          :disabled="disabled || actionBusy || !selectedModel || !selectedModel.isLive"
           @click="onBuyModel(selectedModelId, qty)"
         >
           buy miner (model {{ selectedModelId }}, qty {{ Math.max(1, qty || 1) }})
         </Button>
       </div>
+
+      <div
+        v-if="selectedModel && !selectedModel.isLive"
+        style="margin-top:8px;padding:8px 12px;background:rgba(255,180,0,0.1);border:1px solid rgba(255,180,0,0.4);border-radius:6px;font-size:13px;"
+      >
+        🔒 <b>{{ modelName(selectedModelId) }}</b> ist noch gesperrt.
+        Benötigt mindestens <b>{{ fmt(selectedModel.minLiquidityUsdc) }} USDC</b> Liquidität im Pool.
+      </div>
+
       <div class="ui-muted" style="margin-top:6px;font-size:12px;">
         max {{ maxBuyQtyPerTx }} Miner pro Tx (Auto-Queue bei mehr)
       </div>

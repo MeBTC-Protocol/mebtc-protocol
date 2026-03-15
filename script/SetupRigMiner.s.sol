@@ -55,6 +55,7 @@ contract SetupRigMiner is Script {
             200,            // basePowerWatt
             50_000,         // maxSupply
             24_000_000,     // priceUSDC
+            0,              // minLiquidityUsdc: always open
             rigUri,
             rigPowerCosts,
             rigHashCosts
