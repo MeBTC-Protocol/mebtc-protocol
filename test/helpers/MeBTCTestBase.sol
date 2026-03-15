@@ -80,6 +80,16 @@ contract MockTwapOracle {
     function maxPriceAge() external view returns (uint32) {
         return maxAge;
     }
+
+    uint256 internal liquidityAmount;
+
+    function setLiquidity(uint256 _amount) external {
+        liquidityAmount = _amount;
+    }
+
+    function usdcLiquidity() external view returns (uint256) {
+        return liquidityAmount;
+    }
 }
 
 abstract contract MeBTCTestBase is Test {
@@ -119,7 +129,7 @@ abstract contract MeBTCTestBase is Test {
 
         uint256[4] memory powerCosts = [uint256(50_000), 150_000, 400_000, 1_000_000];
         uint256[4] memory hashCosts = [uint256(100_000), 250_000, 600_000, 1_500_000];
-        miner.addModel(1000, 20, 10_000, 1_000_000, "ipfs://MODEL", powerCosts, hashCosts);
+        miner.addModel(1000, 20, 10_000, 1_000_000, 0, "ipfs://MODEL", powerCosts, hashCosts);
         miner.finalizeModel(1);
 
         payToken.mint(user, 1_000_000_000);

@@ -234,7 +234,7 @@ contract LiquidityEngineTest is Test {
         assertEq(afterLp, 140);
     }
 
-    function test_AutoCompoundIgnoresFailedTokenTransfer() public {
+    function test_FailedTokenTransferRevertsEpoch() public {
         FalseReturnERC20 badUsdc = new FalseReturnERC20("BAD", "BAD", 6);
         FalseReturnERC20 badMebtc = new FalseReturnERC20("BADM", "BADM", 8);
         demandVault = new TokenVault(address(badUsdc));
@@ -254,22 +254,17 @@ contract LiquidityEngineTest is Test {
         demandVault.init(address(engine));
         feeVault.init(address(engine));
 
-        // Create pair and seed LP balance for auto-compound
+        // Create pair (first epoch, no liquidity triggers _addLiquidity skip via minUsdc)
         vm.warp(engine.epochSeconds());
         engine.executeEpoch();
 
-        MockPair pair = MockPair(factory.lastPair());
-        pair.setMintAmount(100);
-        pair.mint(address(engine));
-        pair.setBurnAmounts(1_000_000, 100_000_000);
+        // Seed vaults so _addLiquidity is triggered in the next epoch
+        badUsdc.mint(address(demandVault), 2_000_000);
+        badMebtc.mint(address(feeVault), 100_000_000);
 
-        uint256 beforeLp = pair.balanceOf(address(engine));
         vm.warp(engine.epochSeconds() * 2);
+        // SafeERC20 reverts on false-returning tokens — no silent failure, no phantom LP minting
+        vm.expectRevert();
         engine.executeEpoch();
-
-        uint256 afterLp = pair.balanceOf(address(engine));
-        assertGt(afterLp, beforeLp);
-        assertEq(badUsdc.balanceOf(address(pair)), 0);
-        assertEq(badMebtc.balanceOf(address(pair)), 0);
     }
 }

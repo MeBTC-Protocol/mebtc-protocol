@@ -104,4 +104,28 @@ contract SecurityScenariosTest is MeBTCTestBase {
         assertEq(payToken.balanceOf(demandVault) - demandBefore, fee);
         assertEq(mebtc.balanceOf(feeVaultMeBTC) - feeVaultBefore, 0);
     }
+
+    function test_ClaimWithMebtcRevertsWhenShareAboveMax() public {
+        uint256 tokenId = _buyOne(user);
+        vm.warp(block.timestamp + manager.CLAIM_INTERVAL() * 2);
+        uint16 shareAboveMax = manager.MAX_MEBTC_SHARE_BPS() + 1;
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = tokenId;
+
+        vm.startPrank(user);
+        payToken.approve(address(manager), type(uint256).max);
+        vm.expectRevert(bytes("mebtc%"));
+        manager.claimWithMebtc(ids, shareAboveMax);
+        vm.stopPrank();
+    }
+
+    function test_UpgradeWithMebtcRevertsWhenShareAboveMax() public {
+        uint256 tokenId = _buyOne(user);
+        uint16 shareAboveMax = miner.MAX_MEBTC_SHARE_BPS() + 1;
+
+        vm.prank(user);
+        vm.expectRevert(bytes("mebtc%"));
+        miner.requestUpgradeHashWithMebtc(tokenId, shareAboveMax);
+    }
 }
