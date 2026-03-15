@@ -100,14 +100,14 @@ fee_per_slot = (powerWatt × 600s × 0,15 USDC/kWh) / 3.600.000
 
 **6 Miner-Modelle** (konfiguriert via `SetupModels.s.sol`):
 
-| Modell     | Basis-Hashrate | Leistung | Max. Supply | Preis  |
-|------------|----------------|----------|-------------|--------|
-| RigMiner   | 500 GH/s       | 200 W    | 50.000      | 24 USDC |
-| BasicMiner | 13,5 TH/s      | 1.350 W  | 20.000      | 49 USDC |
-| MeMiner    | 50 TH/s        | 2.250 W  | 10.000      | 124 USDC |
-| ProMiner   | 104 TH/s       | 3.068 W  | 3.000       | 349 USDC |
-| ApexMiner  | (höher)        | (höher)  | (geringer)  | (höher) |
-| PrimeMiner | (höher)        | (höher)  | (geringer)  | (höher) |
+| Modell     | Basis-Hashrate | Leistung | Max. Supply | Preis   | Min. Liquidität |
+|------------|----------------|----------|-------------|---------|-----------------|
+| RigMiner   | 500 GH/s       | 200 W    | 50.000      | 24 USDC | —               |
+| BasicMiner | 13,5 TH/s      | 1.350 W  | 20.000      | 49 USDC | 10.000 USDC     |
+| MeMiner    | 50 TH/s        | 2.250 W  | 10.000      | 124 USDC| 50.000 USDC     |
+| ProMiner   | 104 TH/s       | 3.068 W  | 3.000       | 349 USDC| 200.000 USDC    |
+| PrimeMiner | 200 TH/s       | 3.500 W  | 800         | 749 USDC| 750.000 USDC    |
+| ApexMiner  | 270 TH/s       | 3.645 W  | 200         | 1.499 USDC | 2.000.000 USDC |
 
 **Upgrade-System:**
 - 4 Stufen Hashrate-Upgrade: je +2,5 % (max. +10 %)
@@ -263,16 +263,20 @@ Fairness ist das zentrale Designprinzip von MeBTC. Hier sind alle Mechanismen im
 
 ## 6. Deployment & Konfiguration
 
-### Aktuelles Fuji-Testnet-Deployment (Redeploy #10, 2026-03-14)
+### Aktuelles Fuji-Testnet-Deployment (Redeploy #11, 2026-03-15)
 
 | Contract | Adresse |
 |----------|---------|
-| MiningManager | `0x24581d9C20330D3aD3A9B3E536E347e87ADB7275` |
-| MinerNFT | `0x11E9adeFF66450FCA44D99e200c247284aeba76B` |
-| MeBTC | `0x28D756cE0f8D1b450436953Cb53fa245D5dace08` |
-| StakeVault | `0x46D93C6ccd52806c718d6bE7B9CE85b67c748a75` |
-| LiquidityEngine | `0xDF3Ab24F7dab31Cb05D1d7526548c780b3b60Cc5` |
-| TWAP Oracle | `0xd80E2b701173106C204bF14397e605e1e6780620` |
+| MiningManager | `0xCb4bc402784CF93dbe9E3504C7AD37eC7Cfa738F` |
+| MinerNFT | `0xcd0604989548a6947D600D3Bb0A0808f7Ac5aFE1` |
+| MeBTC | `0xfFfb0217713597608d88DcB7B8401a5B5893Ce84` |
+| StakeVault | `0x82D7E18655e1A4e58fb68A7e4Ec6b3f806d54417` |
+| LiquidityEngine | `0x873659698195103536bBC3F7b6d0304822cAD562` |
+| TWAP Oracle | `0x046c3b8e32f3802A8d5A62b2096e2d8754De8EB6` |
+| MockUSDC | `0x01900649664B7f221D11b6194A49597CBdF8C72e` |
+| DemandVault | `0x80E8E3912FACC03245ad551c09681Be1Dd555009` |
+| FeeVault (MeBTC) | `0xacad4b6525d85C6b0834e18aFcd9De695993F721` |
+| LP Pair | `0xDfba4ed71aC02Bcba9F9B1a79Fbfa081A143914C` |
 
 ### Deployment-Workflow
 
@@ -456,4 +460,4 @@ Diese Invarianten gelten zu jeder Zeit und werden durch Tests geprüft:
 
 ---
 
-*Dieses Dokument wurde am 2026-03-15 erstellt und beschreibt den Stand nach Fuji Redeploy #10.*
+*Dieses Dokument wurde am 2026-03-15 erstellt und beschreibt den Stand nach Fuji Redeploy #11.*
