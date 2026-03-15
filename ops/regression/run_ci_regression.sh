@@ -16,4 +16,4 @@ printf '==> Forge invariant suite\n'
 forge test --match-contract InvariantMiningManagerTest -vv
 
 printf '==> Gas regression check (tolerance: +-%s%%)\n' "$GAS_TOLERANCE_PCT"
-forge snapshot --check --tolerance "$GAS_TOLERANCE_PCT"
+forge snapshot --check --tolerance "$GAS_TOLERANCE_PCT" --no-match-contract InvariantMiningManagerTest

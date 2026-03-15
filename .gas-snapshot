@@ -1,8 +1,3 @@
-InvariantMiningManagerTest:invariant_lastClaimedLeBlockIndex() (runs: 32, calls: 800, reverts: 14)
-InvariantMiningManagerTest:invariant_pendingRemainderBounded() (runs: 32, calls: 800, reverts: 14)
-InvariantMiningManagerTest:invariant_supplyCap() (runs: 32, calls: 800, reverts: 14)
-InvariantMiningManagerTest:invariant_totalEffectiveHashMatchesSum() (runs: 32, calls: 800, reverts: 14)
-InvariantMiningManagerTest:invariant_trackedOwnersMatchNft() (runs: 32, calls: 800, reverts: 14)
 LiquidityEngineTest:test_AddLiquidityCapsByMin() (gas: 1674902)
 LiquidityEngineTest:test_AddLiquidityRespectsMinUsdc() (gas: 1616923)
 LiquidityEngineTest:test_AutoCompoundBurnsAndMintsLp() (gas: 1721418)
