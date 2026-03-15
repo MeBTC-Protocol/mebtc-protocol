@@ -99,8 +99,7 @@ contract MintMinerFuji is Script {
             uint32 maxSupply,
             uint32 minted,
             uint256 priceUSDC,
-            bool finalized,
-            ,
+            bool finalized,,
             uint256[4] memory powerStepCost,
             uint256[4] memory hashStepCost,
             string memory modelUri

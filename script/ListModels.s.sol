@@ -55,10 +55,7 @@ contract ListModels is Script {
                 uint32 maxSupply,
                 uint32 minted,
                 uint256 priceUSDC,
-                bool finalized,
-                ,
-                ,
-                ,
+                bool finalized,,,,
             ) = miner.getModel(uint16(i));
 
             console2.log("----");

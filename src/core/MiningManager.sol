@@ -4,8 +4,9 @@ pragma solidity ^0.8.20;
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20Metadata} from
-    "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {
+    IERC20Metadata
+} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ITwapOracle} from "./ITwapOracle.sol";
 
@@ -260,7 +261,12 @@ contract MiningManager is ReentrancyGuard, Ownable {
     }
 
     // called by MinerNFT on mint/transfer
-    function onMinerTransfer(address from, address to, uint256 tokenId, uint256 /*baseHashRate*/ )
+    function onMinerTransfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 /*baseHashRate*/
+    )
         external
     {
         require(msg.sender == address(minerNFT), "!miner");
@@ -314,7 +320,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
         uint256 tokenId,
         uint256, /*oldEffHash*/
         uint256 /*newEffHash*/
-    ) external {
+    )
+        external
+    {
         require(msg.sender == address(minerNFT), "!miner");
         require(owner != address(0), "owner=0");
 
