@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ITwapOracle} from "./ITwapOracle.sol";
@@ -52,11 +53,13 @@ interface IStakeVault {
 }
 
 contract MiningManager is ReentrancyGuard, Ownable {
+    using SafeERC20 for IERC20;
     uint256 public constant CLAIM_INTERVAL = 600;       // 10 Minuten
     uint256 public constant HALVING_BLOCKS = 210_000;   // Slots bis Halving
     uint8 public constant MEBTC_DECIMALS = 8;
     uint256 private constant MEBTC_UNIT = 1e8;
     uint256 public constant INITIAL_REWARD = 50 * MEBTC_UNIT; // MBTC pro Slot (Netzwerk)
+    uint256 public constant MAX_SLOTS_PER_UPDATE = 1000;
 
     uint256 public constant FEE_PER_KWH = 150_000;      // 0.15 USDC (6 dec)
     uint256 private constant KWH_DENOM = 3_600_000;     // 1000*3600
@@ -103,6 +106,8 @@ contract MiningManager is ReentrancyGuard, Ownable {
     event PayTokenUpdated(address indexed oldToken, address indexed newToken);
     event MinerResynced(uint256 indexed tokenId, uint256 oldEffHash, uint256 newEffHash);
     event MebtcFeeFallback(address indexed payer, uint256 feeUSDC, uint8 reason);
+    event MinerTransferCleared(uint256 indexed tokenId, address indexed from, uint256 rewardCleared, uint256 debtCleared);
+    event RewardsCapped(address indexed user, uint256 requested, uint256 actual, uint256 capRemain);
 
     modifier onlyInit() {
         require(msg.sender == initializer, "!init");
@@ -239,6 +244,16 @@ contract MiningManager is ReentrancyGuard, Ownable {
             _removeOwnerToken(from, tokenId);
 
             _settleWithEff(tokenId, currentEffHash[tokenId], currentEffPower[tokenId]);
+
+            // Schulden und Rewards beim Transfer zurücksetzen
+            // Alter Besitzer sollte vor dem Transfer claimen
+            uint256 clearedReward = pendingReward[tokenId];
+            uint256 clearedDebt = debtUSDC[tokenId];
+            pendingReward[tokenId] = 0;
+            pendingRewardRemainder[tokenId] = 0;
+            debtUSDC[tokenId] = 0;
+            emit MinerTransferCleared(tokenId, from, clearedReward, clearedDebt);
+
             if (totalEffectiveHash >= currentEffHash[tokenId]) totalEffectiveHash -= currentEffHash[tokenId];
 
             currentEffHash[tokenId] = 0;
@@ -266,12 +281,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
     }
 
     // called by MinerNFT ONLY when pending upgrades are applied (after claim)
-    function onMinerUpgradeHashChange(address owner, uint256 tokenId, uint256 oldEffHash, uint256 newEffHash) external {
+    function onMinerUpgradeHashChange(address owner, uint256 tokenId, uint256 /*oldEffHash*/, uint256 /*newEffHash*/) external {
         require(msg.sender == address(minerNFT), "!miner");
         require(owner != address(0), "owner=0");
-
-        oldEffHash;
-        newEffHash;
 
         (uint256 effHash, uint256 effPower,) = _computeEffForOwner(tokenId, owner);
         uint256 prevEffHash = currentEffHash[tokenId];
@@ -368,7 +380,10 @@ contract MiningManager is ReentrancyGuard, Ownable {
         // 4) mint reward
         if (outR > 0) {
             uint256 remain = meBTC.MAX_SUPPLY() - meBTC.totalSupply();
-            if (outR > remain) outR = remain;
+            if (outR > remain) {
+                emit RewardsCapped(msg.sender, outR, remain, remain);
+                outR = remain;
+            }
             if (outR > 0) meBTC.mint(msg.sender, outR);
         }
 
@@ -415,14 +430,14 @@ contract MiningManager is ReentrancyGuard, Ownable {
 
         if (mebtcAmount > 0) {
             IERC20 mebtcErc20 = IERC20(address(meBTC));
-            require(mebtcErc20.transferFrom(payer, feeVaultMeBTC, mebtcAmount), "mebtc");
+            mebtcErc20.safeTransferFrom(payer, feeVaultMeBTC, mebtcAmount);
         }
     }
 
     function _collectUsdc(address payer, uint256 amount) internal {
         require(payToken.allowance(payer, address(this)) >= amount, "allowance");
         require(payToken.balanceOf(payer) >= amount, "balance");
-        require(payToken.transferFrom(payer, demandVault, amount), "paytoken");
+        payToken.safeTransferFrom(payer, demandVault, amount);
     }
 
     function preview(uint256 id, address owner) external view returns (uint256 r, uint256 f) {
@@ -491,7 +506,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
         uint256 _areh = accRewardPerEffHash;
         uint256 _rem = accRewardRemainder;
 
-        while (ts >= _last + CLAIM_INTERVAL) {
+        uint256 slotsProcessed = 0;
+        while (ts >= _last + CLAIM_INTERVAL && slotsProcessed < MAX_SLOTS_PER_UPDATE) {
+            slotsProcessed += 1;
             minted += rw;
             uint256 numerator = (rw * 1e12) + _rem;
             _areh += numerator / totalEffectiveHash;
@@ -528,7 +545,9 @@ contract MiningManager is ReentrancyGuard, Ownable {
         if (_total == 0) return (_areh, _li, _rw, _lastUpdate);
         if (ts <= _lastUpdate) return (_areh, _li, _rw, _lastUpdate);
 
-        while (ts >= _lastUpdate + CLAIM_INTERVAL) {
+        uint256 slotsProcessed = 0;
+        while (ts >= _lastUpdate + CLAIM_INTERVAL && slotsProcessed < MAX_SLOTS_PER_UPDATE) {
+            slotsProcessed += 1;
             uint256 numerator = (_rw * 1e12) + _rem;
             _areh += numerator / _total;
             _rem = numerator % _total;

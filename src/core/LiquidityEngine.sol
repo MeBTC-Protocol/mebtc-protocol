@@ -67,11 +67,11 @@ contract LiquidityEngine {
         minUsdc = _minUsdc;
         epochSeconds = _epochSeconds;
         burnBps = _burnBps;
+        lastEpoch = block.timestamp;
     }
 
     function executeEpoch() external {
         uint256 nextEpoch = lastEpoch + epochSeconds;
-        if (nextEpoch == 0) nextEpoch = block.timestamp - (block.timestamp % epochSeconds);
         require(block.timestamp >= nextEpoch, "epoch");
         lastEpoch = nextEpoch;
 

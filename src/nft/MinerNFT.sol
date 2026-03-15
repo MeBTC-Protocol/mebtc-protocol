@@ -13,8 +13,8 @@ import {ITwapOracle} from "../core/ITwapOracle.sol";
 /*
     MinerNFT (Model B)
     - permissionless buyFromModel() gegen USDC (6 decimals)
-    - 95% vom Primärverkauf -> DemandVault
-      5% -> PROJECT
+    - 90% vom Primärverkauf -> DemandVault
+      10% -> PROJECT
     - Royalties 100% -> ROYALTY_WALLET (ERC2981)
     - Upgrades:
         * requestUpgradeHash / requestUpgradePower ziehen USDC -> POOL
@@ -436,6 +436,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     function _requestUpgradePower(uint256 tokenId, uint16 mebtcShareBps) internal returns (uint16 newPendingPowerBps) {
         require(ownerOf(tokenId) == msg.sender, "!owner");
+        require(address(manager) != address(0), "manager=0");
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
 
@@ -460,6 +461,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
 
     function _requestUpgradeHash(uint256 tokenId, uint16 mebtcShareBps) internal returns (uint16 newPendingHashBps) {
         require(ownerOf(tokenId) == msg.sender, "!owner");
+        require(address(manager) != address(0), "manager=0");
         MinerState storage s = minerState[tokenId];
         require(s.modelId != 0, "model!");
 
