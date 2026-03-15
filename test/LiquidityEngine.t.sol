@@ -149,12 +149,12 @@ contract LiquidityEngineTest is Test {
     function test_ExecuteEpochRequiresTime() public {
         LiquidityEngine engine = _deployEngine(1_000_000, 3600, 0);
 
-        // On local Anvil, timestamp starts low and first call should revert.
-        // On a mainnet fork, timestamp is already high and first call can pass.
-        if (block.timestamp < engine.epochSeconds()) {
+        // lastEpoch is now set to block.timestamp in the constructor, so nextEpoch = lastEpoch + epochSeconds
+        uint256 epochDue = engine.lastEpoch() + engine.epochSeconds();
+        if (block.timestamp < epochDue) {
             vm.expectRevert(bytes("epoch"));
             engine.executeEpoch();
-            vm.warp(engine.epochSeconds());
+            vm.warp(epochDue);
             engine.executeEpoch();
         } else {
             engine.executeEpoch();
@@ -180,7 +180,7 @@ contract LiquidityEngineTest is Test {
         usdc.mint(address(demandVault), 5_000_000); // 5 USDC
         mebtc.mint(address(feeVault), 100_000_000); // 1 MeBTC (8 decimals)
 
-        vm.warp(engine.epochSeconds());
+        vm.warp(engine.lastEpoch() + engine.epochSeconds());
         engine.executeEpoch();
 
         address pairAddr = factory.lastPair();
@@ -199,7 +199,7 @@ contract LiquidityEngineTest is Test {
         usdc.mint(address(demandVault), 1_000_000); // below minUsdc
         mebtc.mint(address(feeVault), 100_000_000);
 
-        vm.warp(engine.epochSeconds());
+        vm.warp(engine.lastEpoch() + engine.epochSeconds());
         engine.executeEpoch();
 
         assertEq(usdc.balanceOf(address(demandVault)), 1_000_000);
@@ -210,7 +210,7 @@ contract LiquidityEngineTest is Test {
         LiquidityEngine engine = _deployEngine(1_000_000, 3600, 1000); // 10% burn
 
         // First epoch creates the pair (no liquidity yet)
-        vm.warp(engine.epochSeconds());
+        vm.warp(engine.lastEpoch() + engine.epochSeconds());
         engine.executeEpoch();
 
         MockPair pair = MockPair(factory.lastPair());
@@ -226,7 +226,7 @@ contract LiquidityEngineTest is Test {
         uint256 beforeLp = pair.balanceOf(address(engine));
         assertEq(beforeLp, 100);
 
-        vm.warp(engine.epochSeconds() * 2);
+        vm.warp(engine.lastEpoch() + engine.epochSeconds());
         engine.executeEpoch();
 
         uint256 afterLp = pair.balanceOf(address(engine));
@@ -255,14 +255,14 @@ contract LiquidityEngineTest is Test {
         feeVault.init(address(engine));
 
         // Create pair (first epoch, no liquidity triggers _addLiquidity skip via minUsdc)
-        vm.warp(engine.epochSeconds());
+        vm.warp(engine.lastEpoch() + engine.epochSeconds());
         engine.executeEpoch();
 
         // Seed vaults so _addLiquidity is triggered in the next epoch
         badUsdc.mint(address(demandVault), 2_000_000);
         badMebtc.mint(address(feeVault), 100_000_000);
 
-        vm.warp(engine.epochSeconds() * 2);
+        vm.warp(engine.lastEpoch() + engine.epochSeconds());
         // SafeERC20 reverts on false-returning tokens — no silent failure, no phantom LP minting
         vm.expectRevert();
         engine.executeEpoch();
