@@ -5,15 +5,31 @@ broadcast/
 .anvil/
 .mythril/
 .venv-mythril/
+.gas-snapshot
 
 # ---------- Node / Frontend ----------
 node_modules/
 dist/
+frontend-vue/node_modules/
+frontend-vue/dist/
+frontend-vue/.env
+frontend-vue/.env.*
 .env
 .env.*
+.env.fuji
+.env.mainnet
+.env.local
+
+# ---------- Interne Docs – nicht öffentlich ----------
+PROJEKT_KONTEXT.md
+TODO.md
+MeBTC_TODO.md
+COMMANDS.md
+DEPLOY_FUJI.md
 
 # ---------- Editor / OS ----------
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
 *.log
