@@ -2,8 +2,11 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract TokenVault {
+    using SafeERC20 for IERC20;
+
     IERC20 public immutable token;
     address public engine;
     address private initializer;
@@ -28,6 +31,6 @@ contract TokenVault {
 
     function transferTo(address to, uint256 amount) external {
         require(msg.sender == engine, "!engine");
-        require(token.transfer(to, amount), "transfer");
+        token.safeTransfer(to, amount);
     }
 }

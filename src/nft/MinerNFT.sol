@@ -32,6 +32,10 @@ interface IMiningManagerHook {
     function onMinerUpgradeHashChange(address owner, uint256 tokenId, uint256 oldEffHash, uint256 newEffHash) external;
 }
 
+interface ILiquidityOracle {
+    function usdcLiquidity() external view returns (uint256);
+}
+
 contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     // --------- constants ----------
@@ -61,6 +65,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
     address public immutable projectWallet;
 
     IMiningManagerHook public manager;
+    ILiquidityOracle public liquidityOracle;
 
     // --------- ids ----------
     uint256 public nextTokenId = 1;
@@ -74,6 +79,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         uint32 minted;
         uint256 priceUSDC;       // 6 decimals (1 USDC = 1_000_000)
         bool finalized;
+        uint256 minLiquidityUsdc; // pool USDC reserve required to buy (0 = always open)
         uint256[4] powerStepCost; // USDC costs for POWER upgrades (step0..3)
         uint256[4] hashStepCost;  // USDC costs for HASH upgrades  (step0..3)
         string uri;               // metadata uri (same for all tokens of the model)
@@ -105,9 +111,11 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         uint32 basePowerWatt,
         uint32 maxSupply,
         uint256 priceUSDC,
+        uint256 minLiquidityUsdc,
         string uri
     );
     event ModelFinalized(uint16 indexed modelId);
+    event LiquidityOracleSet(address oracle);
 
     event MinerPurchased(uint256 indexed tokenId, address indexed buyer, uint16 indexed modelId, uint256 priceUSDC);
 
@@ -164,6 +172,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         uint32 basePowerWatt,
         uint32 maxSupply,
         uint256 priceUSDC,
+        uint256 minLiquidityUsdc,
         string calldata uri,
         uint256[4] calldata powerStepCost,
         uint256[4] calldata hashStepCost
@@ -178,6 +187,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         m.basePowerWatt = basePowerWatt;
         m.maxSupply = maxSupply;
         m.priceUSDC = priceUSDC;
+        m.minLiquidityUsdc = minLiquidityUsdc;
         m.uri = uri;
 
         // copy arrays
@@ -186,7 +196,12 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
             m.hashStepCost[i] = hashStepCost[i];
         }
 
-        emit ModelAdded(modelId, baseHashrate, basePowerWatt, maxSupply, priceUSDC, uri);
+        emit ModelAdded(modelId, baseHashrate, basePowerWatt, maxSupply, priceUSDC, minLiquidityUsdc, uri);
+    }
+
+    function setLiquidityOracle(address _oracle) external onlyOwner {
+        liquidityOracle = ILiquidityOracle(_oracle);
+        emit LiquidityOracleSet(_oracle);
     }
 
     function finalizeModel(uint16 modelId) external onlyOwner {
@@ -208,6 +223,7 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
             uint32 minted,
             uint256 priceUSDC,
             bool finalized,
+            uint256 minLiquidityUsdc,
             uint256[4] memory powerStepCost,
             uint256[4] memory hashStepCost,
             string memory uri
@@ -222,9 +238,20 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         minted = m.minted;
         priceUSDC = m.priceUSDC;
         finalized = m.finalized;
+        minLiquidityUsdc = m.minLiquidityUsdc;
         powerStepCost = m.powerStepCost;
         hashStepCost = m.hashStepCost;
         uri = m.uri;
+    }
+
+    function isModelLive(uint16 modelId) external view returns (bool) {
+        Model storage m = models[modelId];
+        if (m.maxSupply == 0) return false;
+        if (!m.finalized) return false;
+        if (m.minLiquidityUsdc == 0) return true;
+        address oracle = address(liquidityOracle);
+        if (oracle == address(0)) return true;
+        return ILiquidityOracle(oracle).usdcLiquidity() >= m.minLiquidityUsdc;
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
@@ -280,6 +307,12 @@ contract MinerNFT is ERC721, ERC2981, Ownable, ReentrancyGuard {
         Model storage m = models[modelId];
         require(m.maxSupply > 0, "model!");
         require(m.finalized, "not live");
+        if (m.minLiquidityUsdc > 0 && address(liquidityOracle) != address(0)) {
+            require(
+                ILiquidityOracle(liquidityOracle).usdcLiquidity() >= m.minLiquidityUsdc,
+                "liquidity gate"
+            );
+        }
         require(uint256(m.minted) + quantity <= uint256(m.maxSupply), "sold out");
 
         uint256 total = m.priceUSDC * quantity;

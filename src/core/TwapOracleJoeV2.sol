@@ -131,6 +131,11 @@ contract TwapOracleJoeV2 is ITwapOracle {
         isFresh = age <= maxPriceAge;
     }
 
+    function usdcLiquidity() external view returns (uint256) {
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+        return _usdcReserve(reserve0, reserve1);
+    }
+
     function _currentCumulativePrices()
         internal
         view

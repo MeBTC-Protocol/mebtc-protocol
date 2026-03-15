@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {TokenVault} from "./TokenVault.sol";
 
 interface IJoeFactory {
@@ -19,6 +20,7 @@ interface IJoePair {
 }
 
 contract LiquidityEngine {
+    using SafeERC20 for IERC20;
     uint16 public constant BPS = 10_000;
     uint16 public constant MAX_BURN_BPS = 2_000;
     uint8 public constant USDC_DECIMALS = 6;
@@ -144,8 +146,8 @@ contract LiquidityEngine {
 
     function _mintLiquidity(address lp, uint256 usdcAmt, uint256 mebtcAmt) internal returns (uint256 minted) {
         if (usdcAmt == 0 || mebtcAmt == 0) return 0;
-        IERC20(usdc).transfer(lp, usdcAmt);
-        IERC20(mebtc).transfer(lp, mebtcAmt);
+        IERC20(usdc).safeTransfer(lp, usdcAmt);
+        IERC20(mebtc).safeTransfer(lp, mebtcAmt);
         minted = IJoePair(lp).mint(address(this));
     }
 }
