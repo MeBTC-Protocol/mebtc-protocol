@@ -101,7 +101,7 @@ mebtc-protocol/
 │       └── MockUSDC.sol            # Testnet only
 ├── test/                           # 17 Foundry test suites
 ├── script/                         # Deploy & setup scripts
-├── frontend-vue/                   # Vue 3 + TypeScript + TailwindCSS
+├── (frontend → eigenes Repo: github.com/MeBTC-Protocol/dashboard-mebtc)
 ├── metadata/miners/                # NFT metadata (6 models)
 ├── audits/                         # Slither, Aderyn & Mythril reports
 ├── ops/                            # Monitoring & regression scripts
@@ -132,9 +132,10 @@ forge build
 forge test -vvv
 ```
 
-**Frontend:**
+**Frontend:** (eigenes Repo)
 ```bash
-cd frontend-vue
+git clone git@github-mebtc-dashboard:MeBTC-Protocol/dashboard-mebtc.git
+cd dashboard-mebtc
 npm install
 npm run dev
 ```
